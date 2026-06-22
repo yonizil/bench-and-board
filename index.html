@@ -15,18 +15,56 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<script>(function(){try{var t=localStorage.getItem('benchboard_theme');var dark=(t==='dark')||(t==null&&window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches);if(dark)document.documentElement.setAttribute('data-theme','dark');}catch(e){}})();</script>
 <link rel="stylesheet" href="assets/styles.css">
 <script src="https://accounts.google.com/gsi/client" async></script>
 </head>
 <body>
 <div class="top"><div class="wrap">
+  <button class="menuBtn" id="menuBtn" aria-label="Open menu"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
   <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M3 17h18M6 17V9l6-3 6 3v8" stroke="#3a2a05" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 17v-4h4v4" stroke="#3a2a05" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
   <div class="titlewrap"><h1>Bench &amp; Board <span class="beta">BETA</span></h1><p>Plan your cuts before you hit the aisle</p></div>
-  <span class="ver">v0.7</span>
+  <span class="ver">v0.9</span>
 </div></div>
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <div class="drawer-head">
+    <h2>Menu</h2>
+    <button class="drawer-icon themeBtn" id="themeBtn" aria-label="Toggle dark mode" aria-pressed="false">
+      <svg class="ic-moon" viewBox="0 0 24 24" fill="none"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+      <svg class="ic-sun" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <button class="drawer-icon drawer-close" id="drawerClose" aria-label="Close menu">&#215;</button>
+  </div>
+  <div class="drawer-body">
+    <nav class="drawer-nav">
+      <div class="dn-group">Pages</div>
+      <button class="drawer-link" data-go="cut">Cut &amp; Buy</button>
+      <button class="drawer-link" data-go="plans">Blueprints</button>
+      <button class="drawer-link" data-go="frac">Calculator</button>
+      <button class="drawer-link" data-go="ref">Real Sizes</button>
+      <button class="drawer-link" data-go="prices">Price book</button>
+      <button class="drawer-link" data-go="settings">Settings</button>
+      <div class="dn-group">Jump to</div>
+      <button class="drawer-link sub" data-go="cut" data-scroll="projCard">My projects</button>
+      <button class="drawer-link sub" data-go="cut" data-scroll="addCard">Add pieces</button>
+      <div class="dn-group">Shop lumber</div>
+      <a class="store-link" href="https://www.homedepot.com/b/Lumber-Composites/N-5yc1vZbqfz" target="_blank" rel="noopener noreferrer">
+        <span class="store-logo hd"><svg width="22" height="22" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" fill="none" stroke="#fff" stroke-width="2.4"/></svg></span>
+        <span class="store-meta"><span class="store-name">The Home Depot</span><span class="store-sub">Lumber &amp; boards</span></span>
+        <span class="store-ext"><svg viewBox="0 0 24 24" fill="none"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </a>
+      <a class="store-link" href="https://www.lowes.com/c/Lumber-building-supplies" target="_blank" rel="noopener noreferrer">
+        <span class="store-logo lowes"><svg width="30" height="14" viewBox="0 0 60 26"><text x="30" y="20" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="800" fill="#fff" letter-spacing="0.5">LOWE'S</text></svg></span>
+        <span class="store-meta"><span class="store-name">Lowe's</span><span class="store-sub">Lumber &amp; boards</span></span>
+        <span class="store-ext"><svg viewBox="0 0 24 24" fill="none"><path d="M7 17L17 7M9 7h8v8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </a>
+    </nav>
+  </div>
+</aside>
 <div class="tabbar"><div class="wrap">
   <button class="tab active" data-tab="cut">Cut &amp; Buy</button>
-  <button class="tab" data-tab="frac">Fractions</button>
+  <button class="tab" data-tab="frac">Calculator</button>
   <button class="tab" data-tab="ref">Real Sizes</button>
 </div></div>
 <div class="wrap">
@@ -46,68 +84,33 @@
       <div id="projectList"></div>
       <button class="btn btn-ghost btn-sm" id="saveProjBtn" style="margin-top:12px;">Save current project</button>
     </div>
-    <div class="card">
-      <h2>Settings <span class="pill" id="modePill">Project mode</span></h2>
-      <div class="grid2">
-        <div class="field"><label>Default board</label>
-          <select id="stockProfile">
-            <optgroup label="Framing / dimensional">
-            <option>2x4</option><option>2x6</option><option>2x2</option><option>2x8</option><option>2x10</option><option>2x12</option><option>4x4</option>
-            <option>1x2</option><option>1x3</option><option>1x4</option><option>1x6</option><option>1x8</option></optgroup>
-            <optgroup label="Fence pickets">
-            <option>Picket 3.5"</option><option>Picket 5.5"</option><option>Picket 6"</option></optgroup>
-            <option value="any">Any / mixed</option>
-          </select>
-        </div>
-        <div class="field"><label>Stock length</label>
-          <select id="stockLen"><option value="96" selected>8 ft</option><option value="48">4 ft</option><option value="72">6 ft (picket)</option><option value="120">10 ft</option><option value="144">12 ft</option><option value="custom">Custom</option></select>
-        </div>
-      </div>
-      <div class="field" id="customLenWrap" style="display:none;margin-top:13px;"><label>Custom length (inches)</label><input id="customLen" type="text" inputmode="text" placeholder="e.g. 84"></div>
-      <div class="grid2" style="margin-top:13px;">
-        <div class="field"><label>Blade kerf</label>
-          <select id="kerf"><option value="0.125" selected>1/8" standard</option><option value="0.09375">3/32" thin kerf</option><option value="0.0625">1/16" fine</option><option value="0">Ignore</option></select>
-        </div>
-        <div class="field"><label>Price / board <span style="color:var(--muted);font-weight:400;">(opt)</span></label><input id="price" type="text" inputmode="decimal" placeholder="$ each"></div>
-      </div>
-      <div class="field" style="margin-top:13px;"><label>Trim off each end <span style="color:var(--muted);font-weight:400;">(opt)</span></label><input id="trimEnd" type="text" inputmode="text" placeholder="e.g. 1  (split / dog-ear ends)"></div>
-      <div class="toggle"><div class="tl">Buy a spare<small>Adds one extra board per type for miscuts</small></div>
-        <label class="switch"><input type="checkbox" id="spare"><span class="slider"></span></label></div>
-      <div class="hint">Kerf is the wood your blade turns to sawdust on each cut. Trim-off shortens each board's usable length at both ends, handy for split or dog-ear picket ends.</div>
-    </div>
-    <div class="card" id="presetCard">
-      <h2>Start from a preset <span class="pill">optional</span></h2>
-      <div class="field" style="margin-bottom:0;"><label>Project type</label>
-        <select id="presetSel">
-          <option value="">&mdash; none &mdash;</option>
-          <option value="bed">Raised garden bed</option>
-          <option value="shelf">Bookshelf</option>
-          <option value="fence">Picket fence section</option>
-          <option value="bench">Workbench</option>
-        </select>
-      </div>
-      <div id="presetFields"></div>
-      <div id="presetNote" class="hint" style="display:none;"></div>
-      <button class="btn btn-amber" id="buildPreset" style="margin-top:15px;display:none;">Build cut list</button>
-    </div>
-    <div class="card">
+    <button class="settings-jump" id="settingsJump" type="button">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="2"/><path d="M19.4 13a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1H3a2 2 0 110-4h.1a1.6 1.6 0 001.5-1 1.6 1.6 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.6 1.6 0 001.8.3H11a1.6 1.6 0 001-1.5V3a2 2 0 114 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 00-.3 1.8V11a1.6 1.6 0 001.5 1H21a2 2 0 110 4h-.1a1.6 1.6 0 00-1.5 1z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="sj-meta"><span class="sj-t">Project settings</span><span class="sj-s">Default board, stock length, kerf, trim, prices</span></span>
+    </button>
+    <div class="card" id="addCard">
       <h2>Add pieces you need</h2>
-      <div class="grid2">
-        <div class="field"><label>How many</label><input id="pQty" type="number" inputmode="numeric" min="1" value="1"></div>
-        <div class="field"><label>Length each (in)</label><input id="pLen" type="text" inputmode="text" placeholder="28.5 or 96/3"></div>
+      <label>Board</label>
+      <div class="chips" id="boardChips">
+        <button class="chip" type="button" data-board="2x4">2x4</button>
+        <button class="chip" type="button" data-board="2x6">2x6</button>
+        <button class="chip" type="button" data-board="2x8">2x8</button>
+        <button class="chip" type="button" data-board="4x4">4x4</button>
+        <button class="chip" type="button" data-board="1x4">1x4</button>
+        <button class="chip" type="button" data-board="1x6">1x6</button>
       </div>
-      <div class="grid2" style="margin-top:13px;">
-        <div class="field"><label>From board</label>
-          <select id="pProfile">
-            <option value="default" selected>Default board</option>
-            <optgroup label="Framing / dimensional">
-            <option>2x4</option><option>2x6</option><option>2x2</option><option>2x8</option><option>2x10</option><option>2x12</option><option>4x4</option>
-            <option>1x2</option><option>1x3</option><option>1x4</option><option>1x6</option><option>1x8</option></optgroup>
-            <optgroup label="Fence pickets">
-            <option>Picket 3.5"</option><option>Picket 5.5"</option><option>Picket 6"</option></optgroup>
-          </select>
-        </div>
-        <div class="field"><label>Label <span style="color:var(--muted);font-weight:400;">(opt)</span></label><input id="pLabel" type="text" placeholder="legs, slats..."></div>
+      <select id="pProfile" style="margin-top:10px;">
+        <option value="default">Default board (Settings)</option>
+        <optgroup label="Framing / dimensional">
+        <option>2x4</option><option>2x6</option><option>2x2</option><option>2x8</option><option>2x10</option><option>2x12</option><option>4x4</option>
+        <option>1x2</option><option>1x3</option><option>1x4</option><option>1x6</option><option>1x8</option></optgroup>
+        <optgroup label="Fence pickets">
+        <option>Picket 3.5"</option><option>Picket 5.5"</option><option>Picket 6"</option></optgroup>
+      </select>
+      <div class="addrow">
+        <div class="field qtyf"><label>Qty</label><input id="pQty" type="number" inputmode="numeric" min="1" value="1"></div>
+        <div class="field"><label>Length (in)</label><input id="pLen" type="text" inputmode="text" placeholder="28.5"></div>
+        <div class="field"><label>Label</label><input id="pLabel" type="text" placeholder="legs..."></div>
       </div>
       <button class="btn btn-amber" id="addPiece" style="margin-top:15px;">Add to list</button>
       <div style="margin-top:15px;" id="pieceList"></div>
@@ -214,7 +217,59 @@
     <div class="reftip" style="border-left-color:var(--amber);"><b style="color:var(--amber-dk);">Thickness never changes:</b> every "2x" is 1-1/2" thick, every "1x" is 3/4". Only width moves.</div>
     <div class="reftip" style="border-left-color:var(--good);"><b style="color:var(--good);">Workbench tip:</b> pressure-treated 4x4s make solid bench legs but come wet and heavy. Buy them a week early and let them dry in the garage or they'll twist after assembly.</div>
   </section>
-  <footer>Bench &amp; Board v0.7 (beta) &middot; saved only on this device, nothing sent anywhere</footer>
+  <section id="plans">
+    <div class="card">
+      <h2>Blueprints</h2>
+      <p class="pb-note">Pick a project to see a 2D sketch, the full cut list, and a shopping list of what to buy. Change the sizes and it updates.</p>
+      <div class="plan-grid" id="planGrid"></div>
+    </div>
+    <div id="planDetail"></div>
+  </section>
+  <section id="prices">
+    <div class="card">
+      <h2>Price book</h2>
+      <p class="pb-note">Typical U.S. prices for an 8&nbsp;ft board (6&nbsp;ft picket), June 2026. These are estimates &mdash; edit any to match your store, since prices change by location. Saved on this device and used to estimate your project cost.</p>
+      <div id="priceBook"></div>
+      <button class="btn btn-ghost btn-sm" id="resetPrices" style="margin-top:16px;">Reset to typical prices</button>
+    </div>
+  </section>
+  <section id="settings">
+    <div class="card">
+      <h2>Appearance</h2>
+      <div class="toggle first"><div class="tl">Dark mode<small>Easier on the eyes in the shop or at night</small></div>
+        <label class="switch"><input type="checkbox" id="darkToggle"><span class="slider"></span></label></div>
+    </div>
+    <div class="card">
+      <h2>Project settings <span class="pill" id="modePill">Project mode</span></h2>
+      <div class="grid2">
+        <div class="field"><label>Default board</label>
+          <select id="stockProfile">
+            <optgroup label="Framing / dimensional">
+            <option>2x4</option><option>2x6</option><option>2x2</option><option>2x8</option><option>2x10</option><option>2x12</option><option>4x4</option>
+            <option>1x2</option><option>1x3</option><option>1x4</option><option>1x6</option><option>1x8</option></optgroup>
+            <optgroup label="Fence pickets">
+            <option>Picket 3.5"</option><option>Picket 5.5"</option><option>Picket 6"</option></optgroup>
+            <option value="any">Any / mixed</option>
+          </select>
+        </div>
+        <div class="field"><label>Stock length</label>
+          <select id="stockLen"><option value="96" selected>8 ft</option><option value="48">4 ft</option><option value="72">6 ft (picket)</option><option value="120">10 ft</option><option value="144">12 ft</option><option value="custom">Custom</option></select>
+        </div>
+      </div>
+      <div class="field" id="customLenWrap" style="display:none;margin-top:13px;"><label>Custom length (inches)</label><input id="customLen" type="text" inputmode="text" placeholder="e.g. 84"></div>
+      <div class="grid2" style="margin-top:13px;">
+        <div class="field"><label>Blade kerf</label>
+          <select id="kerf"><option value="0.125" selected>1/8" standard</option><option value="0.09375">3/32" thin kerf</option><option value="0.0625">1/16" fine</option><option value="0">Ignore</option></select>
+        </div>
+        <div class="field"><label>Board prices</label><button type="button" class="btn btn-ghost btn-sm" id="openPricesBtn" style="padding:13px;width:100%;">Edit price book</button></div>
+      </div>
+      <div class="field" style="margin-top:13px;"><label>Trim off each end <span style="color:var(--muted);font-weight:400;">(opt)</span></label><input id="trimEnd" type="text" inputmode="text" placeholder="e.g. 1  (split / dog-ear ends)"></div>
+      <div class="toggle"><div class="tl">Buy a spare<small>Adds one extra board per type for miscuts</small></div>
+        <label class="switch"><input type="checkbox" id="spare"><span class="slider"></span></label></div>
+      <div class="hint">Kerf is the wood your blade turns to sawdust on each cut. Trim-off shortens each board's usable length at both ends, handy for split or dog-ear picket ends.</div>
+    </div>
+  </section>
+  <footer>Bench &amp; Board v0.9 (beta) &middot; saved only on this device, nothing sent anywhere</footer>
 </div>
 <div class="toast" id="toast"></div>
 <script src="assets/app.js"></script>
