@@ -63,6 +63,7 @@ function goTo(id, scrollToId){
   var sec=document.getElementById(id); if(sec)sec.classList.add('active');
   document.querySelectorAll('.tab').forEach(function(t){t.classList.toggle('active', t.dataset.tab===id);});
   if(id==='prices'&&typeof renderPriceBook==='function')renderPriceBook();
+  if(id==='settings'&&typeof checkStatus==='function')checkStatus();
   if(scrollToId){
     var el=document.getElementById(scrollToId);
     if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
@@ -280,6 +281,7 @@ function runCalc(){
   if(trim>0)html+='  &middot;  <b>Usable/board:</b> '+fmtInch(usable);
   html+='  &middot;  <b>Kerf:</b> '+fmt(kerf)+'"/cut';
   html+='  &middot;  <b>Efficiency:</b> <span style="color:'+(efficiency>=75?'var(--good)':efficiency>=50?'var(--amber-dk)':'var(--cut)')+'">'+efficiency+'%</span></div>';
+  lastCalc={resultGroups:resultGroups,usable:usable,kerf:kerf,feet:feet,grandBoards:grandBoards,grandCost:grandCost,trim:trim,spare:spare,prices:prices,efficiency:efficiency};
   res.innerHTML=html;
   buildCopyText(resultGroups,usable,kerf,feet,grandBoards,grandCost,null,trim);
   showSave();
@@ -287,6 +289,7 @@ function runCalc(){
 }
 /* plain-text cut list for clipboard */
 var _copyText='';
+var lastCalc=null;
 function buildCopyText(resultGroups,usable,kerf,feet,grandBoards,grandCost,price,trim){
   var lines=['=== Bench & Board Cut List ===',''];
   resultGroups.forEach(function(rg){
@@ -338,7 +341,55 @@ function fallbackCopy(text){
   try{document.execCommand('copy');showToast('Share link copied');}catch(e){showToast('Copy failed, link in address bar');}
   document.body.removeChild(ta);
 }
-document.getElementById('printBtn').addEventListener('click',function(){window.print();});
+/* build a clean one-page spec sheet for printing / saving as PDF */
+function buildSpecSheet(){
+  if(!lastCalc)return false;
+  var lc=lastCalc;
+  var dateStr=new Date().toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});
+  var feetTxt=(lc.feet%1===0?lc.feet:lc.feet.toFixed(1))+' ft';
+  var rows='',shopCost=0;
+  lc.resultGroups.forEach(function(rg){
+    var count=rg.boards.length,unit=lc.prices[rg.prof]||0,cost=unit*count;shopCost+=cost;
+    var name=(rg.prof==='any')?'Any / mixed':rg.prof;
+    rows+='<tr><td><span class="ps-box"></span></td>'+
+      '<td class="ps-qty">'+count+'</td>'+
+      '<td class="ps-item">'+escapeHtml(name)+' <span class="ps-dim">&middot; '+feetTxt+'</span></td>'+
+      '<td class="ps-cost">'+(unit>0?'$'+cost.toFixed(2):'&mdash;')+'</td></tr>';
+  });
+  var cuts='';
+  lc.resultGroups.forEach(function(rg){
+    if(lc.resultGroups.length>1)cuts+='<div class="ps-cgroup">'+escapeHtml(rg.prof)+'</div>';
+    rg.boards.forEach(function(bd,i){
+      if(bd.isSpare){cuts+='<div class="ps-crow"><span class="ps-bd">Board '+(i+1)+'</span><span class="ps-cs">spare &mdash; keep uncut</span><span class="ps-sc"></span></div>';return;}
+      var counts={};bd.segs.forEach(function(s){counts[s]=(counts[s]||0)+1;});
+      var parts=Object.keys(counts).map(function(k){return counts[k]+' @ '+fmtInch(parseFloat(k));});
+      var left=Math.max(0,lc.usable-bd.used);
+      cuts+='<div class="ps-crow"><span class="ps-bd">Board '+(i+1)+'</span><span class="ps-cs">'+parts.join('  &middot;  ')+'</span><span class="ps-sc">'+(left>0.25?'scrap '+fmtInch(Math.round(left*100)/100):'')+'</span></div>';
+    });
+  });
+  var sset='<span><b>Stock length:</b> '+feetTxt+'</span>'+
+    '<span><b>Blade kerf:</b> '+fmt(lc.kerf)+'"</span>'+
+    (lc.trim>0?'<span><b>Trim / end:</b> '+fmtInch(lc.trim)+'</span>':'')+
+    '<span><b>Spare board:</b> '+(lc.spare?'yes':'no')+'</span>'+
+    '<span><b>Efficiency:</b> '+lc.efficiency+'%</span>';
+  var logo='<svg viewBox="0 0 24 24" fill="none"><path d="M3 17h18M6 17V9l6-3 6 3v8" stroke="#e0a838" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 17v-4h4v4" stroke="#e0a838" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var html='<div class="ps-head"><div class="ps-brand"><span class="ps-mark">'+logo+'</span>'+
+    '<span class="ps-name">Bench &amp; Board<small>CUT &amp; SHOPPING SPEC</small></span></div>'+
+    '<div class="ps-doc"><div class="ps-kind">Materials list</div><div class="ps-meta">'+dateStr+' &middot; '+lc.grandBoards+' board'+(lc.grandBoards!==1?'s':'')+'</div></div></div>';
+  html+='<div class="ps-sec"><div class="ps-sec-h">Shopping list &mdash; what to buy</div>'+
+    '<table class="ps-buy"><thead><tr><th></th><th>Qty</th><th>Board</th><th style="text-align:right">Est.</th></tr></thead>'+
+    '<tbody>'+rows+'</tbody>'+
+    '<tfoot><tr><td></td><td class="ps-qty">'+lc.grandBoards+'</td><td>Total boards</td><td class="ps-cost">'+(shopCost>0?'$'+shopCost.toFixed(2):'&mdash;')+'</td></tr></tfoot></table></div>';
+  html+='<div class="ps-sec"><div class="ps-sec-h">Cut list &mdash; what to cut at home</div><div class="ps-cuts">'+cuts+'</div></div>';
+  html+='<div class="ps-sec"><div class="ps-sec-h">Settings</div><div class="ps-settings">'+sset+'</div></div>';
+  html+='<div class="ps-foot"><span>Generated by Bench &amp; Board &middot; measurements in inches unless noted</span><span>bench-and-board.pages.dev</span></div>';
+  document.getElementById('printSheet').innerHTML=html;
+  return true;
+}
+document.getElementById('printBtn').addEventListener('click',function(){
+  if(!buildSpecSheet()){showToast('Run the calculator first');return;}
+  window.print();
+});
 /* apply a saved state object to the form */
 function applyState(s){
   if(s.sp)document.getElementById('stockProfile').value=s.sp;
@@ -716,9 +767,7 @@ document.getElementById('f2d').addEventListener('input',function(){
   if(isNaN(v)){o.textContent='';return;}
   o.innerHTML='= <b style="color:var(--ink)">'+(Math.round(v*10000)/10000)+'"</b>';
 });
-/* ---- settings shortcut + dark/light theme ---- */
-var settingsJump=document.getElementById('settingsJump');
-if(settingsJump)settingsJump.addEventListener('click',function(){goTo('settings');});
+/* ---- dark/light theme ---- */
 function applyThemeMeta(theme){
   var m=document.querySelector('meta[name="theme-color"]');
   if(m)m.setAttribute('content',theme==='dark'?'#0e1011':'#1b1d1f');
@@ -740,6 +789,76 @@ var darkToggle=document.getElementById('darkToggle');
 if(darkToggle)darkToggle.addEventListener('change',function(){setTheme(this.checked?'dark':'light');});
 var themeBtn=document.getElementById('themeBtn');
 if(themeBtn)themeBtn.addEventListener('click',function(){setTheme(getTheme()==='dark'?'light':'dark');});
+
+/* ---- Real Sizes: popular-size shortcuts ---- */
+document.querySelectorAll('#rsChips .chip').forEach(function(c){
+  c.addEventListener('click',function(){
+    var row=document.getElementById('rs-'+c.dataset.size);
+    if(!row)return;
+    document.querySelectorAll('.rs-table tr.rs-flash').forEach(function(r){r.classList.remove('rs-flash');});
+    void row.offsetWidth; row.classList.add('rs-flash');
+    row.scrollIntoView({behavior:'smooth',block:'center'});
+  });
+});
+/* ---- System status panel ---- */
+var STATUS_SERVICES=[
+  {key:'pages',name:'App hosting',sub:'Cloudflare Pages'},
+  {key:'api',name:'Sync API',sub:'Pages Functions'},
+  {key:'d1',name:'Database',sub:'Cloudflare D1'},
+  {key:'google',name:'Sign-in',sub:'Google'}
+];
+var STATUS_HIST_KEY='benchboard_status_hist';
+var STATUS_MAX=16;
+function loadStatusHist(){try{return JSON.parse(localStorage.getItem(STATUS_HIST_KEY))||{};}catch(e){return {};}}
+function saveStatusHist(h){try{localStorage.setItem(STATUS_HIST_KEY,JSON.stringify(h));}catch(e){}}
+function pushStatus(hist,key,up){if(!hist[key])hist[key]=[];hist[key].push(up?1:0);if(hist[key].length>STATUS_MAX)hist[key]=hist[key].slice(-STATUS_MAX);}
+function statusText(v){return v===1?'Operational':v===0?'Unavailable':'Checking…';}
+function renderStatus(current){
+  var el=document.getElementById('statusList');if(!el)return;
+  var hist=loadStatusHist(),h='';
+  STATUS_SERVICES.forEach(function(s){
+    var arr=hist[s.key]||[],bars='',pad=STATUS_MAX-arr.length,i;
+    for(i=0;i<pad;i++)bars+='<i></i>';
+    arr.forEach(function(v){bars+='<i class="'+(v?'up':'down')+'"></i>';});
+    var cur=current?current[s.key]:null,dot=cur===1?'up':cur===0?'down':'unk';
+    h+='<div class="status-row"><div class="status-meta"><span class="status-name">'+s.name+'</span><span class="status-sub">'+s.sub+'</span></div>'+
+       '<div class="status-graph">'+bars+'</div>'+
+       '<div class="status-now"><span class="sd '+dot+'"></span><span class="status-state">'+statusText(cur)+'</span></div></div>';
+  });
+  el.innerHTML=h;
+}
+var statusBusy=false;
+function checkStatus(){
+  if(statusBusy)return; statusBusy=true;
+  var checkedEl=document.getElementById('statusChecked');
+  if(checkedEl)checkedEl.textContent='Checking…';
+  var google=!!(window.google&&window.google.accounts&&window.google.accounts.id);
+  var current={pages:null,api:null,d1:null,google:google?1:0};
+  renderStatus(current);
+  function done(){
+    var hist=loadStatusHist();
+    pushStatus(hist,'pages',current.pages===1);
+    pushStatus(hist,'api',current.api===1);
+    pushStatus(hist,'d1',current.d1===1);
+    pushStatus(hist,'google',current.google===1);
+    saveStatusHist(hist);
+    renderStatus(current);
+    if(checkedEl)checkedEl.textContent='Last checked '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    statusBusy=false;
+  }
+  if(!navigator.onLine){current.pages=0;current.api=0;current.d1=0;done();return;}
+  fetch('/api/health',{cache:'no-store'}).then(function(r){
+    current.pages=1;
+    if(r.ok){current.api=1;return r.json();}
+    current.api=0;return null;
+  }).then(function(j){
+    current.d1=(j&&j.db===true)?1:0;
+    done();
+  }).catch(function(){current.pages=0;current.api=0;current.d1=0;done();});
+}
+var statusRefresh=document.getElementById('statusRefresh');
+if(statusRefresh)statusRefresh.addEventListener('click',checkStatus);
+renderStatus(null);
 
 renderList();
 renderProjects();
