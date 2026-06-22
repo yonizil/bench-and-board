@@ -24,7 +24,7 @@
   <button class="menuBtn" id="menuBtn" aria-label="Open menu"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
   <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M3 17h18M6 17V9l6-3 6 3v8" stroke="#3a2a05" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 17v-4h4v4" stroke="#3a2a05" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
   <div class="titlewrap"><h1>Bench &amp; Board <span class="beta">BETA</span></h1><p>Plan your cuts before you hit the aisle</p></div>
-  <span class="ver">v0.9</span>
+  <span class="ver">v0.10</span>
 </div></div>
 <div class="drawer-backdrop" id="drawerBackdrop"></div>
 <aside class="drawer" id="drawer" aria-hidden="true">
@@ -84,10 +84,6 @@
       <div id="projectList"></div>
       <button class="btn btn-ghost btn-sm" id="saveProjBtn" style="margin-top:12px;">Save current project</button>
     </div>
-    <button class="settings-jump" id="settingsJump" type="button">
-      <svg viewBox="0 0 24 24" fill="none"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="2"/><path d="M19.4 13a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.6 1.6 0 00-1-1.5 1.6 1.6 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1H3a2 2 0 110-4h.1a1.6 1.6 0 001.5-1 1.6 1.6 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.6 1.6 0 001.8.3H11a1.6 1.6 0 001-1.5V3a2 2 0 114 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 00-.3 1.8V11a1.6 1.6 0 001.5 1H21a2 2 0 110 4h-.1a1.6 1.6 0 00-1.5 1z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span class="sj-meta"><span class="sj-t">Project settings</span><span class="sj-s">Default board, stock length, kerf, trim, prices</span></span>
-    </button>
     <div class="card" id="addCard">
       <h2>Add pieces you need</h2>
       <label>Board</label>
@@ -122,7 +118,7 @@
       <button class="btn btn-ghost btn-sm" id="saveProjBtn2">Save project</button>
       <button class="btn btn-ghost btn-sm" id="copyListBtn">Copy list</button>
       <button class="btn btn-ghost btn-sm" id="saveBtn">Copy link</button>
-      <button class="btn btn-ghost btn-sm" id="printBtn">Print</button>
+      <button class="btn btn-ghost btn-sm" id="printBtn">Print / PDF</button>
     </div>
   </section>
   <section id="frac">
@@ -184,23 +180,33 @@
   <section id="ref">
     <div class="card">
       <h2>Nominal vs. actual</h2>
-      <table><thead><tr><th>Tag says</th><th>Actually is</th></tr></thead><tbody>
-        <tr><td>1x2</td><td>3/4 &#215; 1-1/2"</td></tr>
-        <tr><td>1x3</td><td>3/4 &#215; 2-1/2"</td></tr>
-        <tr><td>1x4</td><td>3/4 &#215; 3-1/2"</td></tr>
-        <tr><td>1x6</td><td>3/4 &#215; 5-1/2"</td></tr>
-        <tr><td>1x8</td><td>3/4 &#215; 7-1/4"</td></tr>
-        <tr><td>1x10</td><td>3/4 &#215; 9-1/4"</td></tr>
-        <tr><td>1x12</td><td>3/4 &#215; 11-1/4"</td></tr>
-        <tr><td>2x2</td><td>1-1/2 &#215; 1-1/2"</td></tr>
-        <tr><td>2x4</td><td>1-1/2 &#215; 3-1/2"</td></tr>
-        <tr><td>2x6</td><td>1-1/2 &#215; 5-1/2"</td></tr>
-        <tr><td>2x8</td><td>1-1/2 &#215; 7-1/4"</td></tr>
-        <tr><td>2x10</td><td>1-1/2 &#215; 9-1/4"</td></tr>
-        <tr><td>2x12</td><td>1-1/2 &#215; 11-1/4"</td></tr>
-        <tr><td>4x4</td><td>3-1/2 &#215; 3-1/2"</td></tr>
-        <tr><td>6x6</td><td>5-1/2 &#215; 5-1/2"</td></tr>
+      <p class="pb-note">What the label says versus what you actually get. Tap a popular size to jump to it.</p>
+      <div class="chips rs-chips" id="rsChips">
+        <button class="chip" type="button" data-size="2x4">2x4</button>
+        <button class="chip" type="button" data-size="2x6">2x6</button>
+        <button class="chip" type="button" data-size="2x8">2x8</button>
+        <button class="chip" type="button" data-size="4x4">4x4</button>
+        <button class="chip" type="button" data-size="1x4">1x4</button>
+        <button class="chip" type="button" data-size="1x6">1x6</button>
+      </div>
+      <table class="rs-table"><thead><tr><th>Tag says</th><th>Thickness</th><th>Width</th></tr></thead><tbody>
+        <tr id="rs-1x2"><td>1x2</td><td class="rs-th">3/4"</td><td class="rs-wd">1-1/2"</td></tr>
+        <tr id="rs-1x3"><td>1x3</td><td class="rs-th">3/4"</td><td class="rs-wd">2-1/2"</td></tr>
+        <tr id="rs-1x4"><td>1x4</td><td class="rs-th">3/4"</td><td class="rs-wd">3-1/2"</td></tr>
+        <tr id="rs-1x6"><td>1x6</td><td class="rs-th">3/4"</td><td class="rs-wd">5-1/2"</td></tr>
+        <tr id="rs-1x8"><td>1x8</td><td class="rs-th">3/4"</td><td class="rs-wd">7-1/4"</td></tr>
+        <tr id="rs-1x10"><td>1x10</td><td class="rs-th">3/4"</td><td class="rs-wd">9-1/4"</td></tr>
+        <tr id="rs-1x12"><td>1x12</td><td class="rs-th">3/4"</td><td class="rs-wd">11-1/4"</td></tr>
+        <tr id="rs-2x2"><td>2x2</td><td class="rs-th">1-1/2"</td><td class="rs-wd">1-1/2"</td></tr>
+        <tr id="rs-2x4"><td>2x4</td><td class="rs-th">1-1/2"</td><td class="rs-wd">3-1/2"</td></tr>
+        <tr id="rs-2x6"><td>2x6</td><td class="rs-th">1-1/2"</td><td class="rs-wd">5-1/2"</td></tr>
+        <tr id="rs-2x8"><td>2x8</td><td class="rs-th">1-1/2"</td><td class="rs-wd">7-1/4"</td></tr>
+        <tr id="rs-2x10"><td>2x10</td><td class="rs-th">1-1/2"</td><td class="rs-wd">9-1/4"</td></tr>
+        <tr id="rs-2x12"><td>2x12</td><td class="rs-th">1-1/2"</td><td class="rs-wd">11-1/4"</td></tr>
+        <tr id="rs-4x4"><td>4x4</td><td class="rs-th">3-1/2"</td><td class="rs-wd">3-1/2"</td></tr>
+        <tr id="rs-6x6"><td>6x6</td><td class="rs-th">5-1/2"</td><td class="rs-wd">5-1/2"</td></tr>
       </tbody></table>
+      <div class="hint">Thickness is the easy one: every 1x is 3/4", every 2x is 1-1/2". Only the width changes.</div>
     </div>
     <div class="card">
       <h2>Fence pickets</h2>
@@ -268,10 +274,17 @@
         <label class="switch"><input type="checkbox" id="spare"><span class="slider"></span></label></div>
       <div class="hint">Kerf is the wood your blade turns to sawdust on each cut. Trim-off shortens each board's usable length at both ends, handy for split or dog-ear picket ends.</div>
     </div>
+    <div class="card">
+      <h2>System status <button class="pbtn" id="statusRefresh" type="button" style="float:right;margin-top:-4px;">Refresh</button></h2>
+      <p class="pb-note">Live check of the services Bench &amp; Board runs on. The bars show recent checks made on this device.</p>
+      <div id="statusList"></div>
+      <div class="status-foot"><span id="statusChecked">Not checked yet</span><span class="status-key">up<i class="sd up"></i> down<i class="sd down"></i> n/a<i class="sd unk"></i></span></div>
+    </div>
   </section>
-  <footer>Bench &amp; Board v0.9 (beta) &middot; saved only on this device, nothing sent anywhere</footer>
+  <footer>Bench &amp; Board v0.10 (beta) &middot; saved only on this device, nothing sent anywhere</footer>
 </div>
 <div class="toast" id="toast"></div>
+<div id="printSheet" aria-hidden="true"></div>
 <script src="assets/app.js"></script>
 <script src="assets/auth.js"></script>
 </body>
