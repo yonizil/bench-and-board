@@ -1,0 +1,19 @@
+# Cloudflare Pages configuration.
+# This tells Cloudflare how to run the site and connects the database + settings.
+# It deploys automatically when the project is connected to GitHub.
+
+name = "bench-and-board"
+pages_build_output_dir = "."
+compatibility_date = "2024-11-01"
+
+# The database the server code (functions/) reads and writes.
+# "binding = DB" is how the code refers to it (context.env.DB).
+[[d1_databases]]
+binding = "DB"
+database_name = "bench-and-board"
+database_id = "d39abcb4-d00e-4196-91ce-6913fd8b1dc5"
+
+# Public settings available to the server code.
+# GOOGLE_CLIENT_ID gets filled in after you create the Google sign-in key.
+[vars]
+GOOGLE_CLIENT_ID = "PASTE_YOUR_GOOGLE_CLIENT_ID_HERE"

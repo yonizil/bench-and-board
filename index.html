@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Bench &amp; Board</title>
+<meta name="description" content="Plan your lumber cuts and know exactly how many boards to buy before you head to the store.">
+<meta name="theme-color" content="#1b1d1f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bench &amp; Board">
+<meta property="og:title" content="Bench &amp; Board">
+<meta property="og:description" content="Plan your lumber cuts and know how many boards to buy.">
+<meta property="og:type" content="website">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<script src="https://accounts.google.com/gsi/client" async></script>
+</head>
+<body>
+<div class="top"><div class="wrap">
+  <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M3 17h18M6 17V9l6-3 6 3v8" stroke="#3a2a05" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 17v-4h4v4" stroke="#3a2a05" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+  <div class="titlewrap"><h1>Bench &amp; Board <span class="beta">BETA</span></h1><p>Plan your cuts before you hit the aisle</p></div>
+  <span class="ver">v0.7</span>
+</div></div>
+<div class="tabbar"><div class="wrap">
+  <button class="tab active" data-tab="cut">Cut &amp; Buy</button>
+  <button class="tab" data-tab="frac">Fractions</button>
+  <button class="tab" data-tab="ref">Real Sizes</button>
+</div></div>
+<div class="wrap">
+  <section id="cut" class="active">
+    <div class="card" id="projCard">
+      <h2>My projects</h2>
+      <div id="authRow" class="authrow">
+        <div id="authSignedout">
+          <div id="gbtn"></div>
+          <div class="authhint">Sign in to sync your projects across your devices.</div>
+        </div>
+        <div id="authSignedin" style="display:none;">
+          <span class="authwho">Synced as <b id="authEmail"></b></span>
+          <button class="pbtn" id="signOutBtn">Sign out</button>
+        </div>
+      </div>
+      <div id="projectList"></div>
+      <button class="btn btn-ghost btn-sm" id="saveProjBtn" style="margin-top:12px;">Save current project</button>
+    </div>
+    <div class="card">
+      <h2>Settings <span class="pill" id="modePill">Project mode</span></h2>
+      <div class="grid2">
+        <div class="field"><label>Default board</label>
+          <select id="stockProfile">
+            <optgroup label="Framing / dimensional">
+            <option>2x4</option><option>2x6</option><option>2x2</option><option>2x8</option><option>2x10</option><option>2x12</option><option>4x4</option>
+            <option>1x2</option><option>1x3</option><option>1x4</option><option>1x6</option><option>1x8</option></optgroup>
+            <optgroup label="Fence pickets">
+            <option>Picket 3.5"</option><option>Picket 5.5"</option><option>Picket 6"</option></optgroup>
+            <option value="any">Any / mixed</option>
+          </select>
+        </div>
+        <div class="field"><label>Stock length</label>
+          <select id="stockLen"><option value="96" selected>8 ft</option><option value="48">4 ft</option><option value="72">6 ft (picket)</option><option value="120">10 ft</option><option value="144">12 ft</option><option value="custom">Custom</option></select>
+        </div>
+      </div>
+      <div class="field" id="customLenWrap" style="display:none;margin-top:13px;"><label>Custom length (inches)</label><input id="customLen" type="text" inputmode="text" placeholder="e.g. 84"></div>
+      <div class="grid2" style="margin-top:13px;">
+        <div class="field"><label>Blade kerf</label>
+          <select id="kerf"><option value="0.125" selected>1/8" standard</option><option value="0.09375">3/32" thin kerf</option><option value="0.0625">1/16" fine</option><option value="0">Ignore</option></select>
+        </div>
+        <div class="field"><label>Price / board <span style="color:var(--muted);font-weight:400;">(opt)</span></label><input id="price" type="text" inputmode="decimal" placeholder="$ each"></div>
+      </div>
+      <div class="field" style="margin-top:13px;"><label>Trim off each end <span style="color:var(--muted);font-weight:400;">(opt)</span></label><input id="trimEnd" type="text" inputmode="text" placeholder="e.g. 1  (split / dog-ear ends)"></div>
+      <div class="toggle"><div class="tl">Buy a spare<small>Adds one extra board per type for miscuts</small></div>
+        <label class="switch"><input type="checkbox" id="spare"><span class="slider"></span></label></div>
+      <div class="hint">Kerf is the wood your blade turns to sawdust on each cut. Trim-off shortens each board's usable length at both ends, handy for split or dog-ear picket ends.</div>
+    </div>
+    <div class="card" id="presetCard">
+      <h2>Start from a preset <span class="pill">optional</span></h2>
+      <div class="field" style="margin-bottom:0;"><label>Project type</label>
+        <select id="presetSel">
+          <option value="">&mdash; none &mdash;</option>
+          <option value="bed">Raised garden bed</option>
+          <option value="shelf">Bookshelf</option>
+          <option value="fence">Picket fence section</option>
+          <option value="bench">Workbench</option>
+        </select>
+      </div>
+      <div id="presetFields"></div>
+      <div id="presetNote" class="hint" style="display:none;"></div>
+      <button class="btn btn-amber" id="buildPreset" style="margin-top:15px;display:none;">Build cut list</button>
+    </div>
+    <div class="card">
+      <h2>Add pieces you need</h2>
+      <div class="grid2">
+        <div class="field"><label>How many</label><input id="pQty" type="number" inputmode="numeric" min="1" value="1"></div>
+        <div class="field"><label>Length each (in)</label><input id="pLen" type="text" inputmode="text" placeholder="28.5 or 96/3"></div>
+      </div>
+      <div class="grid2" style="margin-top:13px;">
+        <div class="field"><label>From board</label>
+          <select id="pProfile">
+            <option value="default" selected>Default board</option>
+            <optgroup label="Framing / dimensional">
+            <option>2x4</option><option>2x6</option><option>2x2</option><option>2x8</option><option>2x10</option><option>2x12</option><option>4x4</option>
+            <option>1x2</option><option>1x3</option><option>1x4</option><option>1x6</option><option>1x8</option></optgroup>
+            <optgroup label="Fence pickets">
+            <option>Picket 3.5"</option><option>Picket 5.5"</option><option>Picket 6"</option></optgroup>
+          </select>
+        </div>
+        <div class="field"><label>Label <span style="color:var(--muted);font-weight:400;">(opt)</span></label><input id="pLabel" type="text" placeholder="legs, slats..."></div>
+      </div>
+      <button class="btn btn-amber" id="addPiece" style="margin-top:15px;">Add to list</button>
+      <div style="margin-top:15px;" id="pieceList"></div>
+    </div>
+    <button class="btn btn-primary" id="calc">Figure out my boards</button>
+    <div class="btn-row"><button class="btn btn-ghost" id="clearAll">Clear all pieces</button></div>
+    <div id="result" style="margin-top:20px;"></div>
+    <div id="saveShareWrap" class="btn-row" style="display:none;">
+      <button class="btn btn-ghost btn-sm" id="saveProjBtn2">Save project</button>
+      <button class="btn btn-ghost btn-sm" id="copyListBtn">Copy list</button>
+      <button class="btn btn-ghost btn-sm" id="saveBtn">Copy link</button>
+      <button class="btn btn-ghost btn-sm" id="printBtn">Print</button>
+    </div>
+  </section>
+  <section id="frac">
+    <div class="card">
+      <h2>Inch calculator</h2>
+      <input id="fExpr" class="cexpr" type="text" inputmode="none" placeholder="28 3/8 + 1 1/2" autocomplete="off">
+      <div id="fLive" class="cresult" title="Tap to copy"><span class="cr-frac">0"</span><span class="cr-dec"></span></div>
+      <div class="chips" id="fChips">
+        <button class="chip" data-frac="1/16">1/16</button>
+        <button class="chip" data-frac="1/8">1/8</button>
+        <button class="chip" data-frac="3/16">3/16</button>
+        <button class="chip" data-frac="1/4">1/4</button>
+        <button class="chip" data-frac="5/16">5/16</button>
+        <button class="chip" data-frac="3/8">3/8</button>
+        <button class="chip" data-frac="7/16">7/16</button>
+        <button class="chip" data-frac="1/2">1/2</button>
+        <button class="chip" data-frac="9/16">9/16</button>
+        <button class="chip" data-frac="5/8">5/8</button>
+        <button class="chip" data-frac="11/16">11/16</button>
+        <button class="chip" data-frac="3/4">3/4</button>
+        <button class="chip" data-frac="13/16">13/16</button>
+        <button class="chip" data-frac="7/8">7/8</button>
+        <button class="chip" data-frac="15/16">15/16</button>
+      </div>
+      <div class="keypad" id="fKeys">
+        <button class="key key-fn" data-act="clear">C</button>
+        <button class="key key-fn" data-act="back">&#9003;</button>
+        <button class="key key-ins" data-ins=" ">space</button>
+        <button class="key key-op" data-ins="/">/</button>
+        <button class="key" data-ins="7">7</button>
+        <button class="key" data-ins="8">8</button>
+        <button class="key" data-ins="9">9</button>
+        <button class="key key-op" data-ins="&#215;">&#215;</button>
+        <button class="key" data-ins="4">4</button>
+        <button class="key" data-ins="5">5</button>
+        <button class="key" data-ins="6">6</button>
+        <button class="key key-op" data-ins="&#8722;">&#8722;</button>
+        <button class="key" data-ins="1">1</button>
+        <button class="key" data-ins="2">2</button>
+        <button class="key" data-ins="3">3</button>
+        <button class="key key-op" data-ins="+">+</button>
+        <button class="key" data-ins="0">0</button>
+        <button class="key" data-ins=".">.</button>
+        <button class="key key-eq" data-act="eq" style="grid-column:span 2">=</button>
+      </div>
+      <div class="field" style="margin-top:16px;margin-bottom:0;"><label>Show answer to nearest</label>
+        <select id="fRound"><option value="0" selected>Exact</option><option value="16">1/16"</option><option value="32">1/32"</option><option value="8">1/8"</option><option value="4">1/4"</option></select>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Quick converters</h2>
+      <div class="field"><label>Decimal to fraction</label><input id="d2f" type="number" inputmode="decimal" placeholder="e.g. 3.625"></div>
+      <div id="d2fOut" class="fcsub" style="text-align:left;margin-top:6px;"></div>
+      <div class="field" style="margin-top:14px;"><label>Fraction to decimal</label><input id="f2d" type="text" inputmode="text" placeholder="e.g. 5 7/16" autocomplete="off"></div>
+      <div id="f2dOut" class="fcsub" style="text-align:left;margin-top:6px;"></div>
+    </div>
+    <p class="fcsub">Type measurements however you'd read them: <b>28 3/8</b>, <b>3/4</b>, or just <b>12.5</b>. You can also do math right in any length box, like <b>96/3</b> or <b>24 + 2.5</b>.</p>
+  </section>
+  <section id="ref">
+    <div class="card">
+      <h2>Nominal vs. actual</h2>
+      <table><thead><tr><th>Tag says</th><th>Actually is</th></tr></thead><tbody>
+        <tr><td>1x2</td><td>3/4 &#215; 1-1/2"</td></tr>
+        <tr><td>1x3</td><td>3/4 &#215; 2-1/2"</td></tr>
+        <tr><td>1x4</td><td>3/4 &#215; 3-1/2"</td></tr>
+        <tr><td>1x6</td><td>3/4 &#215; 5-1/2"</td></tr>
+        <tr><td>1x8</td><td>3/4 &#215; 7-1/4"</td></tr>
+        <tr><td>1x10</td><td>3/4 &#215; 9-1/4"</td></tr>
+        <tr><td>1x12</td><td>3/4 &#215; 11-1/4"</td></tr>
+        <tr><td>2x2</td><td>1-1/2 &#215; 1-1/2"</td></tr>
+        <tr><td>2x4</td><td>1-1/2 &#215; 3-1/2"</td></tr>
+        <tr><td>2x6</td><td>1-1/2 &#215; 5-1/2"</td></tr>
+        <tr><td>2x8</td><td>1-1/2 &#215; 7-1/4"</td></tr>
+        <tr><td>2x10</td><td>1-1/2 &#215; 9-1/4"</td></tr>
+        <tr><td>2x12</td><td>1-1/2 &#215; 11-1/4"</td></tr>
+        <tr><td>4x4</td><td>3-1/2 &#215; 3-1/2"</td></tr>
+        <tr><td>6x6</td><td>5-1/2 &#215; 5-1/2"</td></tr>
+      </tbody></table>
+    </div>
+    <div class="card">
+      <h2>Fence pickets</h2>
+      <table><thead><tr><th>Common picket</th><th>Actual size</th></tr></thead><tbody>
+        <tr><td>Narrow dog-ear</td><td>5/8 &#215; 3-1/2 &#215; 6 ft</td></tr>
+        <tr><td>Standard dog-ear</td><td>5/8 &#215; 5-1/2 &#215; 6 ft</td></tr>
+        <tr><td>Wide dog-ear</td><td>5/8 &#215; 6 &#215; 6 ft</td></tr>
+        <tr><td>Thick / "1 in" cedar</td><td>1 &#215; 5-1/2 &#215; 6 ft</td></tr>
+      </tbody></table>
+      <div class="reftip" style="border-left-color:var(--amber);"><b style="color:var(--amber-dk);">Thickness varies:</b> unlike framing lumber, picket thickness isn't standard. You'll see 5/8", 19/32", and a full 1" depending on brand. Measure before you plan a project that needs a specific thickness.</div>
+      <div class="reftip" style="border-left-color:var(--good);"><b style="color:var(--good);">Planters &amp; raised beds:</b> cedar pickets hold up untreated for years, which makes them great for garden boxes. If you use pressure-treated pickets for a bed that grows food, line the inside with plastic so the soil doesn't sit against the treated wood.</div>
+    </div>
+    <div class="reftip"><b>The 8-inch jump:</b> boards up to 6" wide lose 1/2". At 8" and wider they lose 3/4". So a 2x6 is 5-1/2" but a 2x8 is 7-1/4", not 7-1/2". That quarter inch wrecks cut math if you assume the pattern holds.</div>
+    <div class="reftip" style="border-left-color:var(--amber);"><b style="color:var(--amber-dk);">Thickness never changes:</b> every "2x" is 1-1/2" thick, every "1x" is 3/4". Only width moves.</div>
+    <div class="reftip" style="border-left-color:var(--good);"><b style="color:var(--good);">Workbench tip:</b> pressure-treated 4x4s make solid bench legs but come wet and heavy. Buy them a week early and let them dry in the garage or they'll twist after assembly.</div>
+  </section>
+  <footer>Bench &amp; Board v0.7 (beta) &middot; saved only on this device, nothing sent anywhere</footer>
+</div>
+<div class="toast" id="toast"></div>
+<script src="assets/app.js"></script>
+<script src="assets/auth.js"></script>
+</body>
+</html>

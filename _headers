@@ -1,0 +1,12 @@
+# Cloudflare Pages caching rules.
+# HTML is always re-checked so updates show right away.
+# CSS/JS/icons are cached for speed (their names change rarely).
+
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/assets/*
+  Cache-Control: public, max-age=86400
+
+/icons/*
+  Cache-Control: public, max-age=604800
