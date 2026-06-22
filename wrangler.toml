@@ -16,4 +16,4 @@ database_id = "d39abcb4-d00e-4196-91ce-6913fd8b1dc5"
 # Public settings available to the server code.
 # GOOGLE_CLIENT_ID gets filled in after you create the Google sign-in key.
 [vars]
-GOOGLE_CLIENT_ID = "PASTE_YOUR_GOOGLE_CLIENT_ID_HERE"
+GOOGLE_CLIENT_ID = "760090698560-r52mfij7aqpsmkfh2mk85lc42qufm0pq.apps.googleusercontent.com"
