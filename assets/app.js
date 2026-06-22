@@ -57,14 +57,21 @@ function fmtInch(n){
 }
 function showToast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
   setTimeout(function(){t.classList.remove('show');},1900);}
-/* tabs */
-document.querySelectorAll('.tab').forEach(function(t){
-  t.addEventListener('click',function(){
-    document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active');});
-    document.querySelectorAll('section').forEach(function(x){x.classList.remove('active');});
-    t.classList.add('active');document.getElementById(t.dataset.tab).classList.add('active');
+/* navigation (top tabs + hamburger menu share this) */
+function goTo(id, scrollToId){
+  document.querySelectorAll('section').forEach(function(x){x.classList.remove('active');});
+  var sec=document.getElementById(id); if(sec)sec.classList.add('active');
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.toggle('active', t.dataset.tab===id);});
+  if(id==='prices'&&typeof renderPriceBook==='function')renderPriceBook();
+  if(scrollToId){
+    var el=document.getElementById(scrollToId);
+    if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
+  }else{
     window.scrollTo({top:0,behavior:'smooth'});
-  });
+  }
+}
+document.querySelectorAll('.tab').forEach(function(t){
+  t.addEventListener('click',function(){goTo(t.dataset.tab);});
 });
 var stockLen=document.getElementById('stockLen');
 stockLen.addEventListener('change',function(){
@@ -139,6 +146,18 @@ document.getElementById('addPiece').addEventListener('click',addPiece);
     if(e.key==='Enter'){e.preventDefault();addPiece();}
   });
 });
+/* popular board quick buttons (Add pieces) */
+var pProfileSel=document.getElementById('pProfile');
+function syncBoardChips(){
+  document.querySelectorAll('#boardChips .chip').forEach(function(c){
+    c.classList.toggle('active', c.dataset.board===pProfileSel.value);
+  });
+}
+document.querySelectorAll('#boardChips .chip').forEach(function(c){
+  c.addEventListener('click',function(){pProfileSel.value=c.dataset.board;syncBoardChips();});
+});
+pProfileSel.addEventListener('change',syncBoardChips);
+pProfileSel.value='2x4';syncBoardChips();
 document.getElementById('clearAll').addEventListener('click',function(){
   pieces=[];cancelEdit();renderList();document.getElementById('result').innerHTML='';hideSave();
 });
@@ -170,7 +189,7 @@ function runCalc(){
   var res=document.getElementById('result');
   var stock=stockLength();
   var kerf=parseFloat(document.getElementById('kerf').value);
-  var price=parseMoney(document.getElementById('price').value);
+  var prices=loadPrices();
   var trim=parseInches(document.getElementById('trimEnd').value);
   var spare=document.getElementById('spare').checked;
   var defProf=defaultProfile();
@@ -201,7 +220,8 @@ function runCalc(){
     var boards=packGroup(groups[prof],usable,kerf);
     if(spare)boards.push({used:0,segs:[],isSpare:true});
     grandBoards+=boards.length;
-    if(price&&price>0)grandCost+=price*boards.length;
+    var unit=prices[prof];
+    if(unit&&unit>0)grandCost+=unit*boards.length;
     perType.push({prof:prof,count:boards.length,feet:feet});
     resultGroups.push({prof:prof,boards:boards});
   });
@@ -261,7 +281,7 @@ function runCalc(){
   html+='  &middot;  <b>Kerf:</b> '+fmt(kerf)+'"/cut';
   html+='  &middot;  <b>Efficiency:</b> <span style="color:'+(efficiency>=75?'var(--good)':efficiency>=50?'var(--amber-dk)':'var(--cut)')+'">'+efficiency+'%</span></div>';
   res.innerHTML=html;
-  buildCopyText(resultGroups,usable,kerf,feet,grandBoards,grandCost,price,trim);
+  buildCopyText(resultGroups,usable,kerf,feet,grandBoards,grandCost,null,trim);
   showSave();
   res.scrollIntoView({behavior:'smooth',block:'start'});
 }
@@ -295,7 +315,6 @@ function currentState(){
     sl:stockLen.value,
     cl:document.getElementById('customLen').value,
     k:document.getElementById('kerf').value,
-    pr:document.getElementById('price').value,
     tr:document.getElementById('trimEnd').value,
     spr:document.getElementById('spare').checked?1:0,
     pcs:pieces
@@ -326,7 +345,6 @@ function applyState(s){
   if(s.sl){stockLen.value=s.sl;document.getElementById('customLenWrap').style.display=s.sl==='custom'?'block':'none';}
   if(s.cl)document.getElementById('customLen').value=s.cl; else document.getElementById('customLen').value='';
   if(s.k)document.getElementById('kerf').value=s.k;
-  document.getElementById('price').value=s.pr||'';
   document.getElementById('trimEnd').value=s.tr||'';
   document.getElementById('spare').checked=!!s.spr;
   pieces=Array.isArray(s.pcs)?s.pcs.map(function(p){return {qty:+p.qty||1,len:+p.len||0,profile:p.profile||'default',label:p.label||''};}).filter(function(p){return p.len>0;}):[];
@@ -386,42 +404,129 @@ var PRESETS={
       ];
     }}
 };
-var presetSel=document.getElementById('presetSel');
-presetSel.addEventListener('change',function(){
-  var key=presetSel.value;
-  var fc=document.getElementById('presetFields');
-  var note=document.getElementById('presetNote');
-  var btn=document.getElementById('buildPreset');
-  if(!PRESETS[key]){fc.innerHTML='';note.style.display='none';btn.style.display='none';return;}
-  var p=PRESETS[key];var h='<div class="grid2" style="margin-top:13px;">';
-  p.fields.forEach(function(f){
-    h+='<div class="field"><label>'+f[1]+'</label><input id="pf_'+f[0]+'" type="text" inputmode="decimal" value="'+f[2]+'"></div>';
+/* augment presets with a tagline and a 2D sketch */
+PRESETS.bed.tag='Stacked-board garden box';
+PRESETS.shelf.tag='Open shelves between two sides';
+PRESETS.fence.tag='Pickets on rails, post to post';
+PRESETS.bench.tag='Four legs, apron frame, slat top';
+PRESETS.bed.sketch=sk_bed;
+PRESETS.shelf.sketch=sk_shelf;
+PRESETS.fence.sketch=sk_fence;
+PRESETS.bench.sketch=sk_bench;
+var PLAN_ORDER=['bed','shelf','fence','bench'];
+
+function planDefaults(p){var v={};p.fields.forEach(function(f){v[f[0]]=parseInches(f[2]);});return v;}
+function planValsLenient(p){var v={};p.fields.forEach(function(f){var x=parseInches(document.getElementById('pf_'+f[0]).value);v[f[0]]=(isNaN(x)||x<=0)?parseInches(f[2]):x;});return v;}
+function planValsStrict(p){var v={},ok=true;p.fields.forEach(function(f){var x=parseInches(document.getElementById('pf_'+f[0]).value);if(isNaN(x)||x<=0)ok=false;v[f[0]]=x;});return ok?v:null;}
+function planPieces(p,v){return p.build(v).filter(function(x){return x.len>0&&x.qty>0;}).map(function(x){return {qty:Math.round(x.qty),len:Math.round(x.len*16)/16,profile:x.profile||'default',label:x.label||''};});}
+
+/* shopping list: pack each board type onto a sensible stock length, price it */
+function planStockLen(prof,maxLen){
+  var opts=/Picket/.test(prof)?[72,96,120,144]:[96,120,144,192];
+  for(var i=0;i<opts.length;i++){if(opts[i]>=maxLen-1e-6)return opts[i];}
+  return opts[opts.length-1];
+}
+function computeShopping(built){
+  var groups={},order=[];
+  built.forEach(function(p){if(!groups[p.profile]){groups[p.profile]=[];order.push(p.profile);}for(var i=0;i<p.qty;i++)groups[p.profile].push(p.len);});
+  var prices=loadPrices(),out=[],totalBoards=0,totalCost=0;
+  order.forEach(function(prof){
+    var arr=groups[prof],maxLen=Math.max.apply(null,arr),stock=planStockLen(prof,maxLen),boards=packGroup(arr,stock,0.125),unit=prices[prof]||0;
+    out.push({prof:prof,count:boards.length,lenFt:stock/12,unit:unit});
+    totalBoards+=boards.length;totalCost+=unit*boards.length;
   });
-  h+='</div>';
-  fc.innerHTML=h;
-  note.textContent=p.note;note.style.display='block';
-  btn.style.display='block';
-});
-document.getElementById('buildPreset').addEventListener('click',function(){
-  var key=presetSel.value;if(!PRESETS[key])return;
-  var p=PRESETS[key];var v={};var ok=true;
-  p.fields.forEach(function(f){
-    var val=parseInches(document.getElementById('pf_'+f[0]).value);
-    if(isNaN(val)||val<=0)ok=false;
-    v[f[0]]=val;
+  return {groups:out,totalBoards:totalBoards,totalCost:totalCost};
+}
+
+function renderPlanGrid(){
+  var el=document.getElementById('planGrid');if(!el)return;
+  el.innerHTML='';
+  PLAN_ORDER.forEach(function(key){
+    var p=PRESETS[key];
+    var c=document.createElement('button');c.type='button';c.className='plan-card';c.setAttribute('data-key',key);
+    c.innerHTML='<div class="plan-thumb">'+p.sketch(planDefaults(p))+'</div><div class="plan-name">'+p.name+'</div><div class="plan-tag">'+p.tag+'</div>';
+    el.appendChild(c);
   });
-  if(!ok){alert('Fill in every measurement with a number (fractions like 5 1/2 are fine).');return;}
-  var built=p.build(v).filter(function(x){return x.len>0&&x.qty>0;}).map(function(x){
-    return {qty:Math.round(x.qty),len:Math.round(x.len*16)/16,profile:x.profile||'default',label:x.label||''};
+  el.querySelectorAll('.plan-card').forEach(function(c){c.addEventListener('click',function(){selectPlan(c.getAttribute('data-key'));});});
+}
+function selectPlan(key){
+  var p=PRESETS[key],d=document.getElementById('planDetail');
+  var h='<div class="card"><h2>'+p.name+'</h2>'
+    +'<div class="plan-sketch" id="planSketch">'+p.sketch(planDefaults(p))+'</div>'
+    +'<p class="pb-note">'+p.note+'</p><div class="grid2" style="margin-top:4px;">';
+  p.fields.forEach(function(f){h+='<div class="field"><label>'+f[1]+'</label><input id="pf_'+f[0]+'" type="text" inputmode="decimal" value="'+f[2]+'"></div>';});
+  h+='</div><button class="btn btn-amber" id="planBuild" style="margin-top:15px;">Build cut &amp; shopping list</button><div id="planResult" style="margin-top:18px;"></div></div>';
+  d.innerHTML=h;
+  p.fields.forEach(function(f){document.getElementById('pf_'+f[0]).addEventListener('input',function(){updatePlanSketch(key);});});
+  document.getElementById('planBuild').addEventListener('click',function(){buildPlan(key);});
+  buildPlan(key);
+  d.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function updatePlanSketch(key){var p=PRESETS[key],s=document.getElementById('planSketch');if(s)s.innerHTML=p.sketch(planValsLenient(p));}
+function buildPlan(key){
+  var p=PRESETS[key],res=document.getElementById('planResult');if(!res)return;
+  var v=planValsStrict(p);
+  if(!v){res.innerHTML='<div class="warn">Fill in every measurement with a number (fractions like 5 1/2 are fine).</div>';return;}
+  updatePlanSketch(key);
+  var built=planPieces(p,v);
+  if(built.length===0){res.innerHTML='<div class="warn">Those measurements did not produce any pieces.</div>';return;}
+  var shop=computeShopping(built),html='';
+  html+='<div class="buyline"><div class="num">Shopping list</div><div style="margin-top:12px;">';
+  shop.groups.forEach(function(g){
+    html+='<div class="buyrow"><span>'+profileLabel(g.prof,g.lenFt)+'</span><b>'+g.count+(g.unit>0?' <span style="font-weight:600;opacity:.75">$'+(g.unit*g.count).toFixed(2)+'</span>':'')+'</b></div>';
   });
-  if(built.length===0){alert('Those measurements did not produce any pieces. Check the numbers.');return;}
-  if(pieces.length>0&&!confirm('Replace your current pieces with the '+p.name+' cut list?'))return;
-  pieces=built;
-  renderList();
-  document.getElementById('result').innerHTML='';hideSave();
-  runCalc();
-  showToast(p.name+' cut list built');
-});
+  html+='</div><div class="sub">'+shop.totalBoards+' board'+(shop.totalBoards!==1?'s':'')+' total'+(shop.totalCost>0?' &middot; ~$'+shop.totalCost.toFixed(2):'')+'</div></div>';
+  html+='<div class="cutlist"><h3>Cut list</h3>';
+  built.forEach(function(b){html+='<div class="cutrow"><b>'+b.qty+' &#215; '+fmt(b.len)+'"</b> &middot; '+(b.label?b.label+' &middot; ':'')+b.profile+'</div>';});
+  html+='</div><div class="btn-row"><button class="btn btn-ghost btn-sm" id="planToCut">Open in Cut &amp; Buy</button></div>';
+  res.innerHTML=html;
+  document.getElementById('planToCut').addEventListener('click',function(){
+    if(pieces.length>0&&!confirm('Replace your current pieces with the '+p.name+' cut list?'))return;
+    pieces=built;renderList();document.getElementById('result').innerHTML='';hideSave();
+    goTo('cut');runCalc();showToast(p.name+' loaded into Cut & Buy');
+  });
+}
+/* ---- preset sketches (schematic SVG) ---- */
+function sk_bed(v){var L=fmt(v.L),W=fmt(v.W),H=fmt(v.H);
+  return '<svg viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg">'
+   +'<polygon points="150,60 150,120 190,94 190,34" fill="#e2dccf" stroke="#2a2d30" stroke-width="2" stroke-linejoin="round"/>'
+   +'<polygon points="30,60 150,60 190,34 70,34" fill="#f6f2ea" stroke="#2a2d30" stroke-width="2" stroke-linejoin="round"/>'
+   +'<polygon points="30,60 150,60 150,120 30,120" fill="#efeae0" stroke="#2a2d30" stroke-width="2" stroke-linejoin="round"/>'
+   +'<line x1="30" y1="86" x2="150" y2="86" stroke="#2a2d30" stroke-width="1.1"/>'
+   +'<line x1="30" y1="104" x2="150" y2="104" stroke="#2a2d30" stroke-width="1.1"/>'
+   +'<g fill="#74706a" font-family="-apple-system,sans-serif" font-size="11" font-weight="700">'
+   +'<text x="90" y="138" text-anchor="middle">L '+L+'"</text>'
+   +'<text x="20" y="92" text-anchor="middle" transform="rotate(-90 20 92)">H '+H+'"</text>'
+   +'<text x="168" y="30" text-anchor="middle">W '+W+'"</text></g></svg>';}
+function sk_shelf(v){var W=fmt(v.W),H=fmt(v.H),n=Math.max(1,Math.round(v.n||3));
+  var x=55,y=16,w=110,h=120,t=8,inX=x+t,inW=w-2*t,top=y+t,bot=y+h-t,span=bot-top,s='';
+  for(var i=0;i<n;i++){var yy=top+span*((i+1)/(n+1));s+='<rect x="'+inX+'" y="'+(yy-3).toFixed(1)+'" width="'+inW+'" height="6" fill="#c79a5f"/>';}
+  return '<svg viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg">'
+   +'<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="2" fill="#efeae0" stroke="#2a2d30" stroke-width="2"/>'
+   +'<rect x="'+inX+'" y="'+top+'" width="'+inW+'" height="'+span+'" fill="#fff"/>'+s
+   +'<g fill="#74706a" font-family="-apple-system,sans-serif" font-size="11" font-weight="700">'
+   +'<text x="110" y="11" text-anchor="middle">W '+W+'"</text>'
+   +'<text x="180" y="76" text-anchor="middle" transform="rotate(-90 180 76)">H '+H+'"</text></g></svg>';}
+function sk_fence(v){var SW=v.SW||72,FH=v.FH||72,pw=v.pw||5.5,g=v.g||0.5;
+  var pitch=pw+g,n=pitch>0?Math.floor((SW+g)/pitch):1;n=Math.max(1,n);
+  var draw=Math.min(n,13),x0=18,top=16,bot=126,area=184,cell=area/draw,w=cell*0.82,ear=Math.min(5,w*0.32),s='';
+  for(var i=0;i<draw;i++){var px=x0+i*cell+(cell-w)/2;
+    s+='<polygon points="'+px.toFixed(1)+','+(top+ear).toFixed(1)+' '+(px+ear).toFixed(1)+','+top+' '+(px+w-ear).toFixed(1)+','+top+' '+(px+w).toFixed(1)+','+(top+ear).toFixed(1)+' '+(px+w).toFixed(1)+','+bot+' '+px.toFixed(1)+','+bot+'" fill="#efeae0" stroke="#2a2d30" stroke-width="1.5" stroke-linejoin="round"/>';}
+  return '<svg viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg">'+s
+   +'<g fill="#74706a" font-family="-apple-system,sans-serif" font-size="11" font-weight="700">'
+   +'<text x="110" y="142" text-anchor="middle">'+n+' pickets, '+fmt(SW)+'" wide</text>'
+   +'<text x="9" y="71" text-anchor="middle" transform="rotate(-90 9 71)">H '+fmt(FH)+'"</text></g></svg>';}
+function sk_bench(v){var L=fmt(v.L),Ht=fmt(v.Ht);
+  return '<svg viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg">'
+   +'<rect x="48" y="60" width="12" height="58" fill="#e2dccf" stroke="#2a2d30" stroke-width="1.5"/>'
+   +'<rect x="160" y="60" width="12" height="58" fill="#e2dccf" stroke="#2a2d30" stroke-width="1.5"/>'
+   +'<rect x="30" y="62" width="13" height="62" fill="#efeae0" stroke="#2a2d30" stroke-width="2"/>'
+   +'<rect x="177" y="62" width="13" height="62" fill="#efeae0" stroke="#2a2d30" stroke-width="2"/>'
+   +'<rect x="30" y="52" width="160" height="10" fill="#efeae0" stroke="#2a2d30" stroke-width="2"/>'
+   +'<rect x="24" y="38" width="172" height="15" rx="2" fill="#c79a5f" stroke="#2a2d30" stroke-width="2"/>'
+   +'<g fill="#74706a" font-family="-apple-system,sans-serif" font-size="11" font-weight="700">'
+   +'<text x="110" y="32" text-anchor="middle">L '+L+'"</text>'
+   +'<text x="206" y="92" text-anchor="middle" transform="rotate(-90 206 92)">H '+Ht+'"</text></g></svg>';}
 /* ---- saved projects (stored on this device) ---- */
 var PKEY='benchboard_projects';
 function escapeHtml(s){return (''+s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
@@ -478,6 +583,72 @@ function saveCurrentProject(){
 }
 document.getElementById('saveProjBtn').addEventListener('click',saveCurrentProject);
 document.getElementById('saveProjBtn2').addEventListener('click',saveCurrentProject);
+/* ---- price book (board prices, stored on this device) ---- */
+var PRICEKEY='benchboard_prices';
+var PRICE_GROUPS=[
+  {label:'Framing / dimensional (8 ft)', items:['2x4','2x6','2x8','2x10','2x12','4x4','2x2']},
+  {label:'Boards — 1x (8 ft)', items:['1x2','1x3','1x4','1x6','1x8']},
+  {label:'Fence pickets (6 ft)', items:['Picket 3.5"','Picket 5.5"','Picket 6"']}
+];
+var DEFAULT_PRICES={
+  '2x4':3.98,'2x6':6.48,'2x8':9.98,'2x10':13.98,'2x12':17.98,'4x4':9.98,'2x2':3.48,
+  '1x2':3.48,'1x3':4.48,'1x4':6.48,'1x6':9.48,'1x8':12.98,
+  'Picket 3.5"':2.48,'Picket 5.5"':3.48,'Picket 6"':4.48
+};
+function getSavedPrices(){try{return JSON.parse(localStorage.getItem(PRICEKEY))||{};}catch(e){return {};}}
+function loadPrices(){
+  var saved=getSavedPrices(),out={};
+  for(var k in DEFAULT_PRICES){
+    out[k]=(saved[k]!=null&&saved[k]!=='')?+saved[k]:DEFAULT_PRICES[k];
+  }
+  return out;
+}
+function savePrices(obj){try{localStorage.setItem(PRICEKEY,JSON.stringify(obj));}catch(e){}}
+function renderPriceBook(){
+  var el=document.getElementById('priceBook');if(!el)return;
+  var prices=loadPrices(),h='';
+  PRICE_GROUPS.forEach(function(g){
+    h+='<div class="pb-group">'+g.label+'</div>';
+    g.items.forEach(function(it){
+      h+='<div class="pb-row"><span class="pb-name">'+it+'</span>'+
+         '<span class="pb-money"><input type="text" inputmode="decimal" data-prof="'+it.replace(/"/g,'&quot;')+'" value="'+(prices[it]||'')+'"></span></div>';
+    });
+  });
+  el.innerHTML=h;
+  el.querySelectorAll('input[data-prof]').forEach(function(inp){
+    inp.addEventListener('change',function(){
+      var saved=getSavedPrices(),val=parseMoney(inp.value),key=inp.getAttribute('data-prof');
+      if(isNaN(val)||val<0){saved[key]='';inp.value='';}else{saved[key]=Math.round(val*100)/100;inp.value=saved[key];}
+      savePrices(saved);
+    });
+  });
+}
+function openDrawer(){
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('drawer').setAttribute('aria-hidden','false');
+  document.getElementById('drawerBackdrop').classList.add('show');
+}
+function closeDrawer(){
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawer').setAttribute('aria-hidden','true');
+  document.getElementById('drawerBackdrop').classList.remove('show');
+}
+document.getElementById('menuBtn').addEventListener('click',openDrawer);
+document.getElementById('drawerClose').addEventListener('click',closeDrawer);
+document.getElementById('drawerBackdrop').addEventListener('click',closeDrawer);
+/* hamburger menu navigation links */
+document.querySelectorAll('.drawer-link').forEach(function(l){
+  l.addEventListener('click',function(){
+    closeDrawer();
+    goTo(l.dataset.go, l.dataset.scroll);
+  });
+});
+var openPricesBtn=document.getElementById('openPricesBtn');
+if(openPricesBtn)openPricesBtn.addEventListener('click',function(){goTo('prices');});
+document.getElementById('resetPrices').addEventListener('click',function(){
+  if(!confirm('Reset all prices back to the typical defaults?'))return;
+  localStorage.removeItem(PRICEKEY);renderPriceBook();showToast('Prices reset to typical');
+});
 /* ---- fast inch calculator ---- */
 var fExpr=document.getElementById('fExpr');
 var fLive=document.getElementById('fLive');
@@ -545,6 +716,33 @@ document.getElementById('f2d').addEventListener('input',function(){
   if(isNaN(v)){o.textContent='';return;}
   o.innerHTML='= <b style="color:var(--ink)">'+(Math.round(v*10000)/10000)+'"</b>';
 });
+/* ---- settings shortcut + dark/light theme ---- */
+var settingsJump=document.getElementById('settingsJump');
+if(settingsJump)settingsJump.addEventListener('click',function(){goTo('settings');});
+function applyThemeMeta(theme){
+  var m=document.querySelector('meta[name="theme-color"]');
+  if(m)m.setAttribute('content',theme==='dark'?'#0e1011':'#1b1d1f');
+}
+function getTheme(){return document.documentElement.getAttribute('data-theme')==='dark'?'dark':'light';}
+function setTheme(theme){
+  if(theme==='dark')document.documentElement.setAttribute('data-theme','dark');
+  else document.documentElement.removeAttribute('data-theme');
+  try{localStorage.setItem('benchboard_theme',theme);}catch(e){}
+  syncThemeControls(theme);
+}
+function syncThemeControls(theme){
+  applyThemeMeta(theme);
+  var chk=document.getElementById('darkToggle');if(chk)chk.checked=(theme==='dark');
+  var tb=document.getElementById('themeBtn');if(tb)tb.setAttribute('aria-pressed',theme==='dark'?'true':'false');
+}
+syncThemeControls(getTheme());
+var darkToggle=document.getElementById('darkToggle');
+if(darkToggle)darkToggle.addEventListener('change',function(){setTheme(this.checked?'dark':'light');});
+var themeBtn=document.getElementById('themeBtn');
+if(themeBtn)themeBtn.addEventListener('click',function(){setTheme(getTheme()==='dark'?'light':'dark');});
+
 renderList();
 renderProjects();
+renderPriceBook();
+renderPlanGrid();
 restoreFromHash();
