@@ -105,7 +105,7 @@
       </select>
       <div class="addrow">
         <div class="field qtyf"><label>Qty</label><input id="pQty" type="number" inputmode="numeric" min="1" value="1"></div>
-        <div class="field"><label>Length (in)</label><input id="pLen" type="text" inputmode="text" placeholder="28.5"></div>
+        <div class="field"><label id="pLenLabel">Length (in)</label><input id="pLen" type="text" inputmode="text" placeholder="28.5"></div>
         <div class="field"><label>Label</label><input id="pLabel" type="text" placeholder="legs..."></div>
       </div>
       <button class="btn btn-amber" id="addPiece" style="margin-top:15px;">Add to list</button>
@@ -273,9 +273,16 @@
         </div>
       </div>
       <div class="field" id="customLenWrap" style="display:none;margin-top:13px;"><label>Custom length (inches)</label><input id="customLen" type="text" inputmode="text" placeholder="e.g. 84"></div>
-      <div class="field" style="margin-top:13px;"><label>Fits in my car <span style="color:var(--muted);font-weight:400;">(longest board you can haul)</span></label>
-        <select id="maxHaul"><option value="96">8 ft</option><option value="120">10 ft</option><option value="144" selected>12 ft</option></select>
+      <div class="grid2" style="margin-top:13px;">
+        <div class="field"><label>Fits in my car</label>
+          <select id="maxHaul"><option value="96">8 ft</option><option value="120">10 ft</option><option value="144" selected>12 ft</option></select>
+        </div>
+        <div class="field"><label>Measurement units</label>
+          <select id="unitSel"><option value="in" selected>Inches</option><option value="cm">Centimeters</option></select>
+        </div>
       </div>
+      <div class="toggle"><div class="tl">Smart buy<small>Pick the cheapest board length (8/10/12 ft) for each cut, within your car limit</small></div>
+        <label class="switch"><input type="checkbox" id="smartBuy" checked><span class="slider"></span></label></div>
       <div class="grid2" style="margin-top:13px;">
         <div class="field"><label>Blade kerf</label>
           <select id="kerf"><option value="0.125" selected>1/8" standard</option><option value="0.09375">3/32" thin kerf</option><option value="0.0625">1/16" fine</option><option value="0">Ignore</option></select>
