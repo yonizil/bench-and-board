@@ -301,6 +301,23 @@ tbody td:last-child{color:var(--good);font-weight:600;text-align:right;}
   box-shadow:var(--shadow);transition:opacity .2s,transform .2s;z-index:50;pointer-events:none;max-width:90%;text-align:center;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 footer{text-align:center;font-size:11px;color:var(--muted);margin-top:26px;letter-spacing:.03em;}
+/* ---- desktop control-panel layout ---- */
+@media (min-width:980px){
+  .wrap{max-width:1120px;padding:0 28px;}
+  .console{display:grid;grid-template-columns:minmax(360px,400px) 1fr;gap:24px;align-items:start;}
+  .console-main,.console-side{min-width:0;}
+  .console-side #result{margin-top:0;}
+  #result:empty::before{content:"Add your pieces on the left, then press \201CFigure out my boards.\201D Your shopping list and cut maps appear here.";
+    display:block;color:var(--muted);font-size:13.5px;line-height:1.6;text-align:center;
+    border:1.5px dashed var(--line);border-radius:var(--radius);padding:38px 26px;}
+  #frac.active,#ref.active,#settings.active{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;}
+  #frac .fcsub,#ref .reftip{grid-column:1 / -1;}
+  .plan-grid{grid-template-columns:repeat(4,1fr);}
+  #glossList{column-count:2;column-gap:34px;}
+  #glossList .gcat,#glossList .gitem{break-inside:avoid;}
+  #glossList .gcat:first-child{margin-top:0;}
+  #prices .card{max-width:680px;margin-left:auto;margin-right:auto;}
+}
 /* ---- printable spec sheet ---- */
 #printSheet{display:none;}
 .ps-head{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:2px solid #2c2117;padding-bottom:8px;}
