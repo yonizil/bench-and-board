@@ -55,6 +55,13 @@ function fmtInch(n){
   var f=toFraction(n,16);
   return f+'"';
 }
+/* ---- units (in/cm) + smart-buy helpers ---- */
+function unitsMetric(){var s=document.getElementById('unitSel');return !!(s&&s.value==='cm');}
+function parseLen(str){if(unitsMetric()){var v=parseFloat((''+str).replace(',','.'));return isNaN(v)?NaN:v/2.54;}return parseInches(str);}
+function fmtLen(inches){if(unitsMetric())return (Math.round(inches*2.54*10)/10)+' cm';return fmtInch(inches);}
+function fmtLenShort(inches){if(unitsMetric())return ''+Math.round(inches*2.54);return fmt(inches)+'"';}
+function smartBuyOn(){var c=document.getElementById('smartBuy');return c?c.checked:true;}
+function candidateLengths(prof){var lim=maxHaulInches();var all=/Picket/.test(prof)?[72,96,120,144]:[96,120,144,192];var o=all.filter(function(x){return x<=lim+1e-6;});return o.length?o:[all[0]];}
 function showToast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
   setTimeout(function(){t.classList.remove('show');},1900);}
 /* navigation (top tabs + hamburger menu share this) */
@@ -106,6 +113,24 @@ if(maxHaulSel){
   });
   applyMaxHaulToStock();
 }
+/* smart-buy + measurement-unit preferences */
+var smartBuyChk=document.getElementById('smartBuy');
+if(smartBuyChk){
+  try{var sv=localStorage.getItem('benchboard_smartbuy');if(sv!=null)smartBuyChk.checked=(sv==='1');}catch(e){}
+  smartBuyChk.addEventListener('change',function(){try{localStorage.setItem('benchboard_smartbuy',smartBuyChk.checked?'1':'0');}catch(e){}});
+}
+var unitSel=document.getElementById('unitSel');
+function applyUnits(){
+  var metric=unitsMetric();
+  var lbl=document.getElementById('pLenLabel');if(lbl)lbl.textContent=metric?'Length (cm)':'Length (in)';
+  var pl=document.getElementById('pLen');if(pl)pl.placeholder=metric?'72':'28.5';
+  if(typeof renderList==='function')renderList();
+}
+if(unitSel){
+  try{var uu=localStorage.getItem('benchboard_units');if(uu)unitSel.value=uu;}catch(e){}
+  unitSel.addEventListener('change',function(){try{localStorage.setItem('benchboard_units',unitSel.value);}catch(e){}applyUnits();});
+  applyUnits();
+}
 /* pieces: each = {qty, len, profile, label} */
 var pieces=[];var listEl=document.getElementById('pieceList');
 function defaultProfile(){return document.getElementById('stockProfile').value;}
@@ -117,7 +142,7 @@ function renderList(){
     var prof=(p.profile==='default')?'default board':p.profile;
     var lab=p.label?(p.label+' &middot; '):'';
     var d=document.createElement('div');d.className='piece'+(editingIndex===i?' editing':'');
-    d.innerHTML='<span class="tag">'+p.qty+'&#215;</span><div class="meta"><div class="len">'+fmtInch(p.len)+'</div><div class="lab">'+lab+prof+'</div></div>'+
+    d.innerHTML='<span class="tag">'+p.qty+'&#215;</span><div class="meta"><div class="len">'+fmtLen(p.len)+'</div><div class="lab">'+lab+prof+'</div></div>'+
       '<button class="pbtn edit-btn" data-i="'+i+'" aria-label="edit" title="Edit">&#9998;</button>'+
       '<button class="del" data-i="'+i+'" aria-label="remove">&#215;</button>';
     listEl.appendChild(d);
@@ -136,7 +161,7 @@ function startEdit(i){
   var p=pieces[i];
   editingIndex=i;
   document.getElementById('pQty').value=p.qty;
-  document.getElementById('pLen').value=fmt(p.len);
+  document.getElementById('pLen').value=unitsMetric()?(Math.round(p.len*2.54*10)/10):fmt(p.len);
   document.getElementById('pProfile').value=p.profile;
   document.getElementById('pLabel').value=p.label||'';
   document.getElementById('addPiece').textContent='Update piece';
@@ -154,11 +179,11 @@ function cancelEdit(){
 function addPiece(){
   lastPlanInfo=null;
   var q=parseInt(document.getElementById('pQty').value);
-  var l=parseInches(document.getElementById('pLen').value);
+  var l=parseLen(document.getElementById('pLen').value);
   var prof=document.getElementById('pProfile').value;
   var label=document.getElementById('pLabel').value.trim().slice(0,24);
   if(!q||q<1){alert('Enter how many pieces (1 or more).');return;}
-  if(!l||l<=0||isNaN(l)){alert('Enter a length in inches. You can type 28.5 or 28 1/2.');return;}
+  if(!l||l<=0||isNaN(l)){alert(unitsMetric()?'Enter a length in centimeters, e.g. 72.':'Enter a length in inches. You can type 28.5 or 28 1/2.');return;}
   if(editingIndex>=0&&editingIndex<pieces.length){
     pieces[editingIndex]={qty:q,len:l,profile:prof,label:label};
     cancelEdit();
@@ -231,11 +256,14 @@ function runCalc(){
   var spare=document.getElementById('spare').checked;
   var defProf=defaultProfile();
   if(isNaN(trim)||trim<0)trim=0;
-  var usable=stock-2*trim; // trim both ends
+  var smartOn=smartBuyOn();
   if(pieces.length===0){res.innerHTML='<div class="warn">Add at least one piece first.</div>';hideSave();return;}
-  if(!stock){res.innerHTML='<div class="warn">Enter a valid custom stock length.</div>';hideSave();return;}
-  if(stock>maxHaulInches()+1e-6){res.innerHTML='<div class="warn">A '+fmt(stock/12)+' ft board is longer than your car fits ('+fmt(maxHaulInches()/12)+' ft). Pick a shorter stock length, or change "Fits in my car" in Settings.</div>';hideSave();return;}
-  if(usable<=0){res.innerHTML='<div class="warn">Trim amount is too big for this board length.</div>';hideSave();return;}
+  if(!smartOn){
+    if(!stock){res.innerHTML='<div class="warn">Enter a valid custom stock length.</div>';hideSave();return;}
+    if(stock>maxHaulInches()+1e-6){res.innerHTML='<div class="warn">A '+fmt(stock/12)+' ft board is longer than your car fits ('+fmt(maxHaulInches()/12)+' ft). Pick a shorter stock length, or change "Fits in my car" in Settings.</div>';hideSave();return;}
+    if(stock-2*trim<=0){res.innerHTML='<div class="warn">Trim amount is too big for this board length.</div>';hideSave();return;}
+  }
+  function estPrice(prof,L){var base=prices[prof]||0;var ref=/Picket/.test(prof)?72:96;return base>0?base*(L/ref):0;}
   // group pieces by resolved profile
   var groups={};var order=[];
   pieces.forEach(function(p){
@@ -243,55 +271,61 @@ function runCalc(){
     if(!groups[prof]){groups[prof]=[];order.push(prof);}
     for(var i=0;i<p.qty;i++)groups[prof].push(p.len);
   });
-  // check any piece too long
-  for(var gi=0;gi<order.length;gi++){
-    var g=groups[order[gi]];
-    for(var k=0;k<g.length;k++){
-      if(g[k]>usable){res.innerHTML='<div class="warn">A '+fmt(g[k])+'" piece won\'t fit on a '+fmt(usable)+'" usable board ('+order[gi]+'). Use a longer length or less end-trim.</div>';hideSave();return;}
-    }
-  }
-  var feet=stock/12;
   var grandBoards=0,grandCost=0,html='';
-  var perType=[]; // for the buy summary
-  var resultGroups=[];
+  var perType=[],resultGroups=[],tooLong=null,lensUsed={};
   order.forEach(function(prof){
-    var boards=packGroup(groups[prof],usable,kerf);
+    var arr=groups[prof];
+    var cands=smartOn?candidateLengths(prof):[stock];
+    var best=null,longU=0;
+    cands.forEach(function(L){
+      if(!L)return;
+      var uG=L-2*trim;if(uG>longU)longU=uG;
+      if(uG<=0)return;
+      if(!arr.every(function(c){return c<=uG+1e-6;}))return;
+      var bds=packGroup(arr,uG,kerf);
+      var cand={L:L,uG:uG,feet:L/12,boards:bds,purchased:bds.length*L,unit:estPrice(prof,L)};
+      if(!best||cand.purchased<best.purchased-1e-6||(Math.abs(cand.purchased-best.purchased)<1e-6&&cand.boards.length<best.boards.length))best=cand;
+    });
+    if(!best){if(!tooLong)tooLong={prof:prof,usable:longU,maxLen:Math.max.apply(null,arr)};return;}
+    lensUsed[best.feet]=1;
+    var boards=best.boards.slice();
     if(spare)boards.push({used:0,segs:[],isSpare:true});
     grandBoards+=boards.length;
-    var unit=prices[prof];
-    if(unit&&unit>0)grandCost+=unit*boards.length;
-    perType.push({prof:prof,count:boards.length,feet:feet});
-    resultGroups.push({prof:prof,boards:boards});
+    if(best.unit>0)grandCost+=best.unit*boards.length;
+    perType.push({prof:prof,count:boards.length,feet:best.feet});
+    resultGroups.push({prof:prof,boards:boards,usable:best.uG,feet:best.feet,trim:trim});
   });
+  if(tooLong){res.innerHTML='<div class="warn">A '+fmtLen(tooLong.maxLen)+' piece won\'t fit on a '+fmtLen(tooLong.usable)+' usable board ('+tooLong.prof+'). Use a shorter length, less end-trim'+(smartOn?', or raise "Fits in my car" in Settings':'')+'.</div>';hideSave();return;}
   // buy summary
   html+='<div class="buyline">';
   if(perType.length===1){
-    html+='<div class="num">Buy '+perType[0].count+' <small>&#215; '+profileLabel(perType[0].prof,feet)+'</small></div>';
+    html+='<div class="num">Buy '+perType[0].count+' <small>&#215; '+profileLabel(perType[0].prof,perType[0].feet)+'</small></div>';
   }else{
     html+='<div class="num">Shopping list</div><div style="margin-top:12px;">';
     perType.forEach(function(t){
-      html+='<div class="buyrow"><span>'+profileLabel(t.prof,feet)+'</span><b>'+t.count+'</b></div>';
+      html+='<div class="buyrow"><span>'+profileLabel(t.prof,t.feet)+'</span><b>'+t.count+'</b></div>';
     });
     html+='</div>';
   }
   var subbits=[grandBoards+' board'+(grandBoards!==1?'s':'')+' total'];
+  if(smartOn)subbits.push(Object.keys(lensUsed).length>1?'smart-buy mix':'smart-buy');
   if(spare)subbits.push('incl. spares');
   if(grandCost>0)subbits.push('~$'+grandCost.toFixed(2));
   html+='<div class="sub">'+subbits.join(' &middot; ')+'</div></div>';
   // per-group cut maps
   resultGroups.forEach(function(rg){
-    if(resultGroups.length>1)html+='<div class="grouphdr">'+rg.prof+'</div>';
+    if(resultGroups.length>1)html+='<div class="grouphdr">'+rg.prof+(smartOn?' &middot; '+profileLabel('',rg.feet).trim():'')+'</div>';
     rg.boards.forEach(function(bd,i){
       if(bd.isSpare){
         html+='<div class="board"><div class="bhead"><span class="name">Board '+(i+1)+' (spare)</span><span class="scrap" style="color:var(--good)">backup</span></div><div class="bar"><div class="seg scrap" style="flex:1">keep on hand</div></div></div>';
         return;
       }
-      var left=Math.max(0,usable-bd.used);
-      html+='<div class="board"><div class="bhead"><span class="name">Board '+(i+1)+'</span><span class="scrap">scrap '+fmt(Math.round(left*100)/100)+'"</span></div><div class="bar">';
-      if(trim>0)html+='<div class="seg trim" style="flex:'+trim+' '+trim+' 0">trim</div>';
-      bd.segs.forEach(function(s){html+='<div class="seg use" style="flex:'+s+' '+s+' 0">'+fmt(s)+'"</div>';});
+      var left=Math.max(0,rg.usable-bd.used);
+      html+='<div class="board"><div class="bhead"><span class="name">Board '+(i+1)+'</span><span class="scrap">scrap '+fmtLen(Math.round(left*100)/100)+'</span></div><div class="bar">';
+      if(rg.trim>0)html+='<div class="seg trim" style="flex:'+rg.trim+' '+rg.trim+' 0">trim</div>';
+      bd.segs.forEach(function(s){html+='<div class="seg use" style="flex:'+s+' '+s+' 0">'+fmtLenShort(s)+'</div>';});
       if(left>0.25)html+='<div class="seg scrap" style="flex:'+left+' '+left+' 0">scrap</div>';
-      if(trim>0)html+='<div class="seg trim" style="flex:'+trim+' '+trim+' 0">trim</div>';
+      if(rg.trim>0)html+='<div class="seg trim" style="flex:'+rg.trim+' '+rg.trim+' 0">trim</div>';
       html+='</div></div>';
     });
   });
@@ -306,16 +340,15 @@ function runCalc(){
     rg.boards.forEach(function(bd,i){
       if(bd.isSpare){html+='<div class="cutrow"><b>Board '+(i+1)+':</b> spare, leave uncut</div>';return;}
       var counts={};bd.segs.forEach(function(s){counts[s]=(counts[s]||0)+1;});
-      var parts=Object.keys(counts).map(function(key){return counts[key]+' @ '+fmt(parseFloat(key))+'"';});
+      var parts=Object.keys(counts).map(function(key){return counts[key]+' @ '+fmtLen(parseFloat(key));});
       html+='<div class="cutrow"><b>Board '+(i+1)+':</b> '+parts.join('  &middot;  ')+'</div>';
     });
   });
   html+='</div>';
   var allCuts=0;order.forEach(function(p){groups[p].forEach(function(c){allCuts+=c;});});
-  var totalUsable=grandBoards*usable;
+  var totalUsable=0;resultGroups.forEach(function(rg){rg.boards.forEach(function(bd){if(!bd.isSpare)totalUsable+=rg.usable;});});
   var efficiency=totalUsable>0?Math.round(allCuts/totalUsable*100):0;
-  html+='<div class="totals"><b>Wood in cuts:</b> '+fmtInch(Math.round(allCuts*10)/10)+'  &middot;  <b>Boards:</b> '+grandBoards;
-  if(trim>0)html+='  &middot;  <b>Usable/board:</b> '+fmtInch(usable);
+  html+='<div class="totals"><b>Wood in cuts:</b> '+fmtLen(Math.round(allCuts*10)/10)+'  &middot;  <b>Boards:</b> '+grandBoards;
   html+='  &middot;  <b>Kerf:</b> '+fmt(kerf)+'"/cut';
   html+='  &middot;  <b>Efficiency:</b> <span style="color:'+(efficiency>=75?'var(--good)':efficiency>=50?'var(--amber-dk)':'var(--cut)')+'">'+efficiency+'%</span></div>';
   // project extras: rough screws + finish estimate
@@ -334,9 +367,9 @@ function runCalc(){
     '<div class="exrow"><span>Stain</span><b>~'+exStain+' qt / coat</b></div>'+
     '<div class="exrow"><span>Paint</span><b>~'+exPaint+' qt / coat</b></div>'+
     '<div class="exnote">Screws assume about four per piece. Finish is from board surface area (stain ~125, paint ~100 sq ft per quart). Buy a little extra.</div></div>';
-  lastCalc={resultGroups:resultGroups,usable:usable,kerf:kerf,feet:feet,grandBoards:grandBoards,grandCost:grandCost,trim:trim,spare:spare,prices:prices,efficiency:efficiency,extras:{screws:exScrews,sqft:exSqft,stain:exStain,paint:exPaint,pieces:exPieces}};
+  lastCalc={resultGroups:resultGroups,kerf:kerf,grandBoards:grandBoards,grandCost:grandCost,trim:trim,spare:spare,prices:prices,efficiency:efficiency,smartOn:smartOn,extras:{screws:exScrews,sqft:exSqft,stain:exStain,paint:exPaint,pieces:exPieces}};
   res.innerHTML=html;
-  buildCopyText(resultGroups,usable,kerf,feet,grandBoards,grandCost,null,trim);
+  buildCopyText(resultGroups,kerf,grandBoards,grandCost,trim);
   showSave();
   res.scrollIntoView({behavior:'smooth',block:'start'});
 }
@@ -344,20 +377,24 @@ function runCalc(){
 var _copyText='';
 var lastCalc=null;
 var lastPlanInfo=null;
-function buildCopyText(resultGroups,usable,kerf,feet,grandBoards,grandCost,price,trim){
+function buildCopyText(resultGroups,kerf,grandBoards,grandCost,trim){
   var lines=['=== Bench & Board Cut List ===',''];
   resultGroups.forEach(function(rg){
-    if(resultGroups.length>1)lines.push('-- '+rg.prof+' --');
+    if(resultGroups.length>1)lines.push('-- '+rg.prof+' ('+profileLabel('',rg.feet).trim()+') --');
     rg.boards.forEach(function(bd,i){
       if(bd.isSpare){lines.push('Board '+(i+1)+': spare (keep uncut)');return;}
       var counts={};bd.segs.forEach(function(s){counts[s]=(counts[s]||0)+1;});
-      var parts=Object.keys(counts).map(function(k){return counts[k]+' @ '+fmtInch(parseFloat(k));});
-      var left=Math.max(0,usable-bd.used);
-      lines.push('Board '+(i+1)+': '+parts.join(', ')+(left>0.25?' | scrap '+fmtInch(Math.round(left*100)/100):''));
+      var parts=Object.keys(counts).map(function(k){return counts[k]+' @ '+fmtLen(parseFloat(k));});
+      var left=Math.max(0,rg.usable-bd.used);
+      lines.push('Board '+(i+1)+': '+parts.join(', ')+(left>0.25?' | scrap '+fmtLen(Math.round(left*100)/100):''));
     });
   });
   lines.push('');
-  lines.push('Buy: '+grandBoards+' board'+(grandBoards!==1?'s':'')+' ('+profileLabel(resultGroups[0]&&resultGroups[0].prof||'',feet)+')');
+  lines.push('Buy: '+grandBoards+' board'+(grandBoards!==1?'s':'')+' total');
+  resultGroups.forEach(function(rg){
+    var n=rg.boards.filter(function(b){return !b.isSpare;}).length+(rg.boards.some(function(b){return b.isSpare;})?1:0);
+    lines.push('  '+n+' x '+profileLabel(rg.prof,rg.feet));
+  });
   if(grandCost>0)lines.push('Est. cost: $'+grandCost.toFixed(2));
   _copyText=lines.join('\n');
 }
@@ -400,30 +437,30 @@ function buildSpecSheet(){
   if(!lastCalc)return false;
   var lc=lastCalc;
   var dateStr=new Date().toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});
-  var feetTxt=(lc.feet%1===0?lc.feet:lc.feet.toFixed(1))+' ft';
+  function pUnit(prof,feet){var base=lc.prices[prof]||0;var ref=/Picket/.test(prof)?72:96;return base>0?base*(feet*12/ref):0;}
   var rows='',shopCost=0;
   lc.resultGroups.forEach(function(rg){
-    var count=rg.boards.length,unit=lc.prices[rg.prof]||0,cost=unit*count;shopCost+=cost;
+    var count=rg.boards.length,unit=pUnit(rg.prof,rg.feet),cost=unit*count;shopCost+=cost;
     var name=(rg.prof==='any')?'Any / mixed':rg.prof;
     rows+='<tr><td><span class="ps-box"></span></td>'+
       '<td class="ps-qty">'+count+'</td>'+
-      '<td class="ps-item">'+escapeHtml(name)+' <span class="ps-dim">&middot; '+feetTxt+'</span></td>'+
+      '<td class="ps-item">'+escapeHtml(name)+' <span class="ps-dim">&middot; '+profileLabel('',rg.feet).trim()+'</span></td>'+
       '<td class="ps-cost">'+(unit>0?'$'+cost.toFixed(2):'&mdash;')+'</td></tr>';
   });
   var cuts='';
   lc.resultGroups.forEach(function(rg){
-    if(lc.resultGroups.length>1)cuts+='<div class="ps-cgroup">'+escapeHtml(rg.prof)+'</div>';
+    if(lc.resultGroups.length>1)cuts+='<div class="ps-cgroup">'+escapeHtml(rg.prof)+' &middot; '+profileLabel('',rg.feet).trim()+'</div>';
     rg.boards.forEach(function(bd,i){
       if(bd.isSpare){cuts+='<div class="ps-crow"><span class="ps-bd">Board '+(i+1)+'</span><span class="ps-cs">spare &mdash; keep uncut</span><span class="ps-sc"></span></div>';return;}
       var counts={};bd.segs.forEach(function(s){counts[s]=(counts[s]||0)+1;});
-      var parts=Object.keys(counts).map(function(k){return counts[k]+' @ '+fmtInch(parseFloat(k));});
-      var left=Math.max(0,lc.usable-bd.used);
-      cuts+='<div class="ps-crow"><span class="ps-bd">Board '+(i+1)+'</span><span class="ps-cs">'+parts.join('  &middot;  ')+'</span><span class="ps-sc">'+(left>0.25?'scrap '+fmtInch(Math.round(left*100)/100):'')+'</span></div>';
+      var parts=Object.keys(counts).map(function(k){return counts[k]+' @ '+fmtLen(parseFloat(k));});
+      var left=Math.max(0,rg.usable-bd.used);
+      cuts+='<div class="ps-crow"><span class="ps-bd">Board '+(i+1)+'</span><span class="ps-cs">'+parts.join('  &middot;  ')+'</span><span class="ps-sc">'+(left>0.25?'scrap '+fmtLen(Math.round(left*100)/100):'')+'</span></div>';
     });
   });
-  var sset='<span><b>Stock length:</b> '+feetTxt+'</span>'+
+  var sset='<span><b>Buying:</b> '+(lc.smartOn?'smart-buy':'fixed length')+'</span>'+
     '<span><b>Blade kerf:</b> '+fmt(lc.kerf)+'"</span>'+
-    (lc.trim>0?'<span><b>Trim / end:</b> '+fmtInch(lc.trim)+'</span>':'')+
+    (lc.trim>0?'<span><b>Trim / end:</b> '+fmtLen(lc.trim)+'</span>':'')+
     '<span><b>Spare board:</b> '+(lc.spare?'yes':'no')+'</span>'+
     '<span><b>Efficiency:</b> '+lc.efficiency+'%</span>';
   var logo='<svg viewBox="0 0 24 24" fill="none"><path d="M3 17h18M6 17V9l6-3 6 3v8" stroke="#e0a838" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 17v-4h4v4" stroke="#e0a838" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
