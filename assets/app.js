@@ -78,6 +78,34 @@ var stockLen=document.getElementById('stockLen');
 stockLen.addEventListener('change',function(){
   document.getElementById('customLenWrap').style.display=stockLen.value==='custom'?'block':'none';
 });
+/* "Fits in my car": caps the longest board the app offers / recommends */
+var MAXHAUL_KEY='benchboard_maxhaul';
+var maxHaulSel=document.getElementById('maxHaul');
+function maxHaulInches(){return maxHaulSel?(parseFloat(maxHaulSel.value)||192):192;}
+function applyMaxHaulToStock(){
+  if(!maxHaulSel)return;
+  var lim=maxHaulInches();
+  Array.prototype.forEach.call(stockLen.options,function(o){
+    var v=parseFloat(o.value);
+    if(!isNaN(v))o.disabled=(v>lim+1e-6);
+  });
+  if(stockLen.value!=='custom'){
+    var cur=parseFloat(stockLen.value);
+    if(!isNaN(cur)&&cur>lim){
+      var best=null;
+      Array.prototype.forEach.call(stockLen.options,function(o){var v=parseFloat(o.value);if(!isNaN(v)&&v<=lim&&(best===null||v>best))best=v;});
+      if(best!==null)stockLen.value=String(best);
+    }
+  }
+}
+if(maxHaulSel){
+  try{var savedHaul=localStorage.getItem(MAXHAUL_KEY);if(savedHaul)maxHaulSel.value=savedHaul;}catch(e){}
+  maxHaulSel.addEventListener('change',function(){
+    try{localStorage.setItem(MAXHAUL_KEY,maxHaulSel.value);}catch(e){}
+    applyMaxHaulToStock();
+  });
+  applyMaxHaulToStock();
+}
 /* pieces: each = {qty, len, profile, label} */
 var pieces=[];var listEl=document.getElementById('pieceList');
 function defaultProfile(){return document.getElementById('stockProfile').value;}
@@ -199,6 +227,7 @@ function runCalc(){
   var usable=stock-2*trim; // trim both ends
   if(pieces.length===0){res.innerHTML='<div class="warn">Add at least one piece first.</div>';hideSave();return;}
   if(!stock){res.innerHTML='<div class="warn">Enter a valid custom stock length.</div>';hideSave();return;}
+  if(stock>maxHaulInches()+1e-6){res.innerHTML='<div class="warn">A '+fmt(stock/12)+' ft board is longer than your car fits ('+fmt(maxHaulInches()/12)+' ft). Pick a shorter stock length, or change "Fits in my car" in Settings.</div>';hideSave();return;}
   if(usable<=0){res.innerHTML='<div class="warn">Trim amount is too big for this board length.</div>';hideSave();return;}
   // group pieces by resolved profile
   var groups={};var order=[];
@@ -408,6 +437,7 @@ function applyState(s){
   document.getElementById('trimEnd').value=s.tr||'';
   document.getElementById('spare').checked=!!s.spr;
   pieces=Array.isArray(s.pcs)?s.pcs.map(function(p){return {qty:+p.qty||1,len:+p.len||0,profile:p.profile||'default',label:p.label||''};}).filter(function(p){return p.len>0;}):[];
+  if(typeof applyMaxHaulToStock==='function')applyMaxHaulToStock();
   renderList();
 }
 /* restore from URL on load */
@@ -593,7 +623,10 @@ function planPieces(p,v){return p.build(v).filter(function(x){return x.len>0&&x.
 
 /* shopping list: pack each board type onto a sensible stock length, price it */
 function planStockLen(prof,maxLen){
-  var opts=/Picket/.test(prof)?[72,96,120,144]:[96,120,144,192];
+  var lim=(typeof maxHaulInches==='function')?maxHaulInches():192;
+  var all=/Picket/.test(prof)?[72,96,120,144]:[96,120,144,192];
+  var opts=all.filter(function(x){return x<=lim+1e-6;});
+  if(opts.length===0)opts=[all[0]];
   for(var i=0;i<opts.length;i++){if(opts[i]>=maxLen-1e-6)return opts[i];}
   return opts[opts.length-1];
 }
