@@ -198,6 +198,13 @@ function stockLength(){
 function profileLabel(prof,feet){
   return (prof==='any'?'':prof+' ')+(feet%1===0?feet:feet.toFixed(1))+' ft';
 }
+/* actual milled dimensions (thickness x width, inches) for surface-area math */
+var ACTUAL={
+  '2x2':{t:1.5,w:1.5},'2x4':{t:1.5,w:3.5},'2x6':{t:1.5,w:5.5},'2x8':{t:1.5,w:7.25},'2x10':{t:1.5,w:9.25},'2x12':{t:1.5,w:11.25},
+  '4x4':{t:3.5,w:3.5},'6x6':{t:5.5,w:5.5},
+  '1x2':{t:0.75,w:1.5},'1x3':{t:0.75,w:2.5},'1x4':{t:0.75,w:3.5},'1x6':{t:0.75,w:5.5},'1x8':{t:0.75,w:7.25},'1x10':{t:0.75,w:9.25},'1x12':{t:0.75,w:11.25},
+  'Picket 3.5"':{t:0.625,w:3.5},'Picket 5.5"':{t:0.625,w:5.5},'Picket 6"':{t:0.625,w:6}
+};
 /* pack one group of cuts into boards via First Fit Decreasing.
    A board only loses kerf BETWEEN pieces, so the first piece on a board
    pays no kerf. This avoids over-buying and negative-scrap displays. */
@@ -311,7 +318,23 @@ function runCalc(){
   if(trim>0)html+='  &middot;  <b>Usable/board:</b> '+fmtInch(usable);
   html+='  &middot;  <b>Kerf:</b> '+fmt(kerf)+'"/cut';
   html+='  &middot;  <b>Efficiency:</b> <span style="color:'+(efficiency>=75?'var(--good)':efficiency>=50?'var(--amber-dk)':'var(--cut)')+'">'+efficiency+'%</span></div>';
-  lastCalc={resultGroups:resultGroups,usable:usable,kerf:kerf,feet:feet,grandBoards:grandBoards,grandCost:grandCost,trim:trim,spare:spare,prices:prices,efficiency:efficiency};
+  // project extras: rough screws + finish estimate
+  var exPieces=0,exSqIn=0;
+  order.forEach(function(prof){
+    var dims=ACTUAL[prof]||ACTUAL['2x4'];
+    groups[prof].forEach(function(len){exPieces++;exSqIn+=2*(dims.t+dims.w)*len+2*(dims.t*dims.w);});
+  });
+  var exSqft=Math.round(exSqIn/144*10)/10;
+  var exScrews=Math.max(8,Math.ceil(exPieces*4/10)*10);
+  var exStain=Math.max(1,Math.ceil(exSqft/125));
+  var exPaint=Math.max(1,Math.ceil(exSqft/100));
+  html+='<div class="extras"><h3>Project extras <span class="exhint">rough estimate</span></h3>'+
+    '<div class="exrow"><span>Screws</span><b>~'+exScrews+'</b></div>'+
+    '<div class="exrow"><span>Surface to finish</span><b>~'+exSqft+' sq ft</b></div>'+
+    '<div class="exrow"><span>Stain</span><b>~'+exStain+' qt / coat</b></div>'+
+    '<div class="exrow"><span>Paint</span><b>~'+exPaint+' qt / coat</b></div>'+
+    '<div class="exnote">Screws assume about four per piece. Finish is from board surface area (stain ~125, paint ~100 sq ft per quart). Buy a little extra.</div></div>';
+  lastCalc={resultGroups:resultGroups,usable:usable,kerf:kerf,feet:feet,grandBoards:grandBoards,grandCost:grandCost,trim:trim,spare:spare,prices:prices,efficiency:efficiency,extras:{screws:exScrews,sqft:exSqft,stain:exStain,paint:exPaint,pieces:exPieces}};
   res.innerHTML=html;
   buildCopyText(resultGroups,usable,kerf,feet,grandBoards,grandCost,null,trim);
   showSave();
@@ -414,6 +437,13 @@ function buildSpecSheet(){
     '<tfoot><tr><td></td><td class="ps-qty">'+lc.grandBoards+'</td><td>Total boards</td><td class="ps-cost">'+(shopCost>0?'$'+shopCost.toFixed(2):'&mdash;')+'</td></tr></tfoot></table></div>';
   html+='<div class="ps-sec"><div class="ps-sec-h">Cut list &mdash; what to cut at home</div><div class="ps-cuts">'+cuts+'</div></div>';
   html+='<div class="ps-sec"><div class="ps-sec-h">Settings</div><div class="ps-settings">'+sset+'</div></div>';
+  if(lc.extras){
+    html+='<div class="ps-sec"><div class="ps-sec-h">Project extras (rough)</div><div class="ps-settings">'+
+      '<span><b>Screws:</b> ~'+lc.extras.screws+'</span>'+
+      '<span><b>Finish surface:</b> ~'+lc.extras.sqft+' sq ft</span>'+
+      '<span><b>Stain:</b> ~'+lc.extras.stain+' qt/coat</span>'+
+      '<span><b>Paint:</b> ~'+lc.extras.paint+' qt/coat</span></div></div>';
+  }
   if(lastPlanInfo&&lastPlanInfo.steps&&lastPlanInfo.steps.length){
     html+='<div class="ps-sec"><div class="ps-sec-h">Assembly steps</div><ol class="ps-steps">';
     lastPlanInfo.steps.forEach(function(s){html+='<li>'+s+'</li>';});
@@ -615,6 +645,14 @@ PRESETS.planter.sketch=sk_planter;
 PRESETS.plantstand.sketch=sk_plantstand;
 PRESETS.shoerack.sketch=sk_shoerack;
 var PLAN_ORDER=['bed','shelf','fence','bench','picnic','planter','plantstand','shoerack'];
+PRESETS.bed.tools=['Tape measure','Pencil','Speed square','Saw (circular or miter)','Drill / driver','Safety glasses'];PRESETS.bed.outdoor=true;
+PRESETS.shelf.tools=['Tape measure','Pencil','Speed square','Saw (circular or miter)','Drill / driver','Level','Clamps','Sandpaper'];
+PRESETS.fence.tools=['Tape measure','Pencil','Speed square','Saw (circular or miter)','Drill / driver','Level','String line','Post-hole digger'];PRESETS.fence.outdoor=true;
+PRESETS.bench.tools=['Tape measure','Pencil','Speed square','Saw (circular or miter)','Drill / driver','Clamps','Sandpaper','Safety glasses'];
+PRESETS.picnic.tools=['Tape measure','Pencil','Speed square','Saw (circular or miter)','Drill / driver','Clamps','Sandpaper'];PRESETS.picnic.outdoor=true;
+PRESETS.planter.tools=['Tape measure','Pencil','Speed square','Saw (circular or miter)','Drill / driver','Clamps','Staple gun (for liner)'];PRESETS.planter.outdoor=true;
+PRESETS.plantstand.tools=['Tape measure','Pencil','Speed square','Saw (circular or miter)','Drill / driver','Sandpaper'];
+PRESETS.shoerack.tools=['Tape measure','Pencil','Speed square','Saw (circular or miter)','Drill / driver','Sandpaper'];
 
 function planDefaults(p){var v={};p.fields.forEach(function(f){v[f[0]]=parseInches(f[2]);});return v;}
 function planValsLenient(p){var v={};p.fields.forEach(function(f){var x=parseInches(document.getElementById('pf_'+f[0]).value);v[f[0]]=(isNaN(x)||x<=0)?parseInches(f[2]):x;});return v;}
@@ -683,6 +721,16 @@ function buildPlan(key){
   html+='<div class="cutlist"><h3>Cut list</h3>';
   built.forEach(function(b){html+='<div class="cutrow"><b>'+b.qty+' &#215; '+fmt(b.len)+'"</b> &middot; '+(b.label?b.label+' &middot; ':'')+b.profile+'</div>';});
   html+='</div>';
+  if(p.tools&&p.tools.length){
+    var mat=shop.groups.map(function(g){return g.count+' &times; '+profileLabel(g.prof,g.lenFt);});
+    mat.push('Wood screws (2½ in)');
+    mat.push('Wood glue');
+    mat.push(p.outdoor?'Exterior stain or sealer':'Stain, paint, or sealer (optional)');
+    html+='<div class="cutlist"><h3>Tools &amp; materials</h3><div class="checkcols">'+
+      '<div><div class="ck-h">Tools</div>'+p.tools.map(function(t){return '<div class="ck-item"><span class="ck-box"></span>'+t+'</div>';}).join('')+'</div>'+
+      '<div><div class="ck-h">Materials</div>'+mat.map(function(m){return '<div class="ck-item"><span class="ck-box"></span>'+m+'</div>';}).join('')+'</div>'+
+      '</div></div>';
+  }
   if(p.steps&&p.steps.length){
     html+='<div class="cutlist"><h3>Assembly steps</h3><ol class="asm">';
     p.steps.forEach(function(s){html+='<li>'+s+'</li>';});
@@ -808,9 +856,10 @@ function projectAction(act,id){
   if(idx<0)return;
   if(act==='open'){
     applyState(arr[idx].state);
+    if(typeof closeDrawer==='function')closeDrawer();
+    goTo('cut');
     if(pieces.length)runCalc();
     showToast('Opened "'+arr[idx].name+'"');
-    document.getElementById('projCard').scrollIntoView({behavior:'smooth',block:'start'});
   }else if(act==='dup'){
     var copy=JSON.parse(JSON.stringify(arr[idx]));
     copy.id='p'+Date.now();copy.name=(arr[idx].name+' copy').slice(0,40);copy.savedAt=Date.now();
@@ -999,7 +1048,7 @@ document.querySelectorAll('#rsChips .chip').forEach(function(c){
 });
 /* ---- Lumber terms glossary ---- */
 var GLOSSARY=[
-  {cat:'Buying lumber',items:[
+  {cat:'Buying lumber',icon:'buy',items:[
     {w:'Nominal size',d:"The size printed on the tag, like 2x4. It's the rough size before the board is planed and dried, so the real board is smaller."},
     {w:'Actual size',d:'What the board really measures. A 2x4 is actually 1½ by 3½ inches. The Real Sizes page lists them all.'},
     {w:'Stock length',d:'The length a board is sold in, usually 8, 10, or 12 feet. Fence pickets are typically 6 feet.'},
@@ -1015,7 +1064,7 @@ var GLOSSARY=[
     {w:'Softwood',d:'Wood from evergreens like pine, fir, and cedar. Most framing lumber is softwood.'},
     {w:'Hardwood',d:'Wood from leafy trees like oak and maple. Denser and pricier, used for furniture and trim.'}
   ]},
-  {cat:'Measuring & cutting',items:[
+  {cat:'Measuring & cutting',icon:'cut',items:[
     {w:'Kerf',d:'The slice of wood the blade turns to sawdust on each cut, about 1/8 inch. It adds up over many cuts, so the app accounts for it.'},
     {w:'Rip cut',d:'A cut that runs the length of the board, along the grain.'},
     {w:'Crosscut',d:'A cut straight across the board to length, across the grain.'},
@@ -1026,7 +1075,7 @@ var GLOSSARY=[
     {w:'On-center',ab:'OC',d:'Spacing measured from the center of one piece to the center of the next, common for studs and joists.'},
     {w:'Face, edge, end',d:'The face is the wide side, the edge is the narrow side, and the end is the cut-off tip (end grain).'}
   ]},
-  {cat:'Joining & fastening',items:[
+  {cat:'Joining & fastening',icon:'join',items:[
     {w:'Butt joint',d:'The simplest joint: two boards pushed together and fastened, end to face.'},
     {w:'Pocket hole',d:'An angled hole drilled so a screw joins two boards from a hidden spot. Kreg jigs make these.'},
     {w:'Pilot hole',d:"A small hole drilled first so a screw goes in straight and the wood doesn't split."},
@@ -1034,7 +1083,7 @@ var GLOSSARY=[
     {w:'Dado',d:'A flat-bottomed groove cut across the grain, often to seat a shelf.'},
     {w:'Rabbet',d:'A step-shaped notch cut along the edge of a board, common for cabinet backs.'}
   ]},
-  {cat:'Wood quirks & parts',items:[
+  {cat:'Wood quirks & parts',icon:'wood',items:[
     {w:'Grain',d:'The direction the wood fibers run. Cutting and sanding go smoother with the grain.'},
     {w:'Knot',d:'A spot where a branch grew. Solid knots are fine; loose ones weaken the board.'},
     {w:'Warp',d:'Any bend or twist in a board. Cup curls across the width, bow bends along the length, twist wrings it corner to corner.'},
@@ -1044,20 +1093,37 @@ var GLOSSARY=[
     {w:'Grit',d:'Sandpaper coarseness. Lower numbers (60 to 80) are rough; higher numbers (180 to 220) are smooth.'}
   ]}
 ];
+var GLOSS_ICONS={
+  buy:'<svg viewBox="0 0 24 24" fill="none"><path d="M4 13l7 7 9-9V4h-7L4 13z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="15.5" cy="8.5" r="1.4" fill="currentColor"/></svg>',
+  cut:'<svg viewBox="0 0 24 24" fill="none"><rect x="2.5" y="8" width="19" height="8" rx="1.5" stroke="currentColor" stroke-width="2"/><path d="M7 8v3M11 8v4M15 8v3M19 8v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  join:'<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="6" r="3.2" stroke="currentColor" stroke-width="2"/><path d="M12 9.2V20M9 12.5h6M9 15.5h6M9 18h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  wood:'<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="12" rx="1.5" stroke="currentColor" stroke-width="2"/><path d="M3 10.5c5 1.2 13 1.2 18 0M3 14c5 1.2 13 1.2 18 0" stroke="currentColor" stroke-width="1.6"/></svg>'
+};
+var glossOpen={};
 function renderGlossary(q){
   var el=document.getElementById('glossList');if(!el)return;
   q=(q||'').trim().toLowerCase();
-  var html='',any=false;
-  GLOSSARY.forEach(function(g){
-    var rows='';
-    g.items.forEach(function(it){
-      if(q&&(it.w+' '+(it.ab||'')+' '+it.d).toLowerCase().indexOf(q)<0)return;
-      any=true;
-      rows+='<div class="gitem"><div class="gword">'+escapeHtml(it.w)+(it.ab?'<span class="gabbr">'+escapeHtml(it.ab)+'</span>':'')+'</div><div class="gdef">'+it.d+'</div></div>';
-    });
-    if(rows)html+='<div class="gcat">'+g.cat+'</div>'+rows;
+  var searching=q.length>0,html='';
+  GLOSSARY.forEach(function(g,ci){
+    var items=g.items.filter(function(it){return !q||(it.w+' '+(it.ab||'')+' '+it.d).toLowerCase().indexOf(q)>=0;});
+    if(searching&&items.length===0)return;
+    var open=searching?true:!!glossOpen[ci];
+    var rows=items.map(function(it){return '<div class="gitem"><div class="gword">'+escapeHtml(it.w)+(it.ab?'<span class="gabbr">'+escapeHtml(it.ab)+'</span>':'')+'</div><div class="gdef">'+it.d+'</div></div>';}).join('');
+    html+='<div class="gloss-cat'+(open?' open':'')+'">'+
+      '<button class="gloss-head" type="button" data-ci="'+ci+'">'+
+        '<span class="gloss-ic">'+(GLOSS_ICONS[g.icon]||'')+'</span>'+
+        '<span class="gloss-h-t">'+g.cat+'</span>'+
+        '<span class="gloss-count">'+items.length+'</span>'+
+        '<span class="gloss-chev" aria-hidden="true"></span>'+
+      '</button><div class="gloss-body">'+rows+'</div></div>';
   });
-  el.innerHTML=any?html:'<div class="empty">No terms match that search.</div>';
+  el.innerHTML=html||'<div class="empty">No terms match that search.</div>';
+  el.querySelectorAll('.gloss-head').forEach(function(b){
+    b.addEventListener('click',function(){
+      var ci=+b.dataset.ci;glossOpen[ci]=!glossOpen[ci];
+      renderGlossary(document.getElementById('glossSearch').value);
+    });
+  });
 }
 var glossSearch=document.getElementById('glossSearch');
 if(glossSearch)glossSearch.addEventListener('input',function(){renderGlossary(this.value);});

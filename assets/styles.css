@@ -143,15 +143,41 @@ input[inputmode]{font-variant-numeric:tabular-nums;}
 .status-foot{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:11px;color:var(--muted);}
 .status-key i{margin:0 8px 0 3px;vertical-align:-1px;}
 .status-key i:last-child{margin-right:0;}
-/* lumber terms glossary */
-.gcat{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--amber-dk);margin:18px 0 6px;}
-.gcat:first-child{margin-top:8px;}
-.gitem{padding:11px 2px;border-bottom:1px solid var(--line);}
-.gitem:last-child{border-bottom:none;}
-.gword{font-size:14.5px;font-weight:700;color:var(--ink);}
+/* lumber terms glossary (collapsible categories) */
+.gloss-cat{border:1px solid var(--line);background:var(--card);border-radius:12px;margin-bottom:10px;overflow:hidden;}
+.gloss-head{display:flex;align-items:center;gap:11px;width:100%;border:none;background:transparent;cursor:pointer;
+  font-family:inherit;padding:13px 14px;text-align:left;}
+.gloss-head:active{background:var(--hover);}
+.gloss-ic{flex:0 0 34px;width:34px;height:34px;border-radius:9px;background:var(--track);color:var(--amber-dk);
+  display:flex;align-items:center;justify-content:center;}
+.gloss-ic svg{width:20px;height:20px;display:block;}
+.gloss-h-t{flex:1;font-size:14.5px;font-weight:700;color:var(--ink);}
+.gloss-count{font-size:11px;font-weight:700;color:var(--muted);background:var(--track);border-radius:20px;padding:2px 8px;font-variant-numeric:tabular-nums;}
+.gloss-chev{flex:0 0 auto;width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);
+  transform:rotate(45deg);transition:transform .18s;margin-left:4px;}
+.gloss-cat.open .gloss-chev{transform:rotate(-135deg);}
+.gloss-body{display:none;padding:0 14px 8px;}
+.gloss-cat.open .gloss-body{display:block;}
+.gitem{padding:11px 2px;border-top:1px solid var(--line);}
+.gitem:first-child{border-top:none;}
+.gword{font-size:14px;font-weight:700;color:var(--ink);}
 .gword .gabbr{display:inline-block;font-size:11px;font-weight:700;color:var(--amber-dk);background:var(--track);
   padding:2px 6px;border-radius:6px;margin-left:7px;letter-spacing:.03em;vertical-align:1px;}
 .gdef{font-size:13px;color:var(--ink-2);line-height:1.5;margin-top:3px;}
+/* account bar (top) + saved projects in the drawer */
+.acct{background:var(--card);border-bottom:1px solid var(--line);}
+.acct .wrap{display:flex;align-items:center;justify-content:flex-end;gap:12px;min-height:52px;padding-top:8px;padding-bottom:8px;}
+#authSignedout{display:flex;align-items:center;gap:12px;}
+#authSignedin{width:100%;justify-content:space-between;}
+.acct-hint{font-size:12.5px;color:var(--muted);}
+.acct-welcome{display:flex;flex-direction:column;line-height:1.25;min-width:0;}
+.acct-hello{font-size:14px;font-weight:600;color:var(--ink);}
+.acct-hello b{font-weight:800;}
+.acct-quote{font-size:12px;color:var(--muted);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:opacity .26s;}
+@media (max-width:560px){.acct-hint{display:none;}.acct .wrap{justify-content:center;}}
+.drawer-projects{margin-top:4px;}
+.drawer-projects .empty{padding:16px 12px;font-size:12.5px;}
+.proj .pbtn[data-act="open"]{background:linear-gradient(160deg,#e8b956,var(--amber));color:#241a02;border-color:transparent;}
 /* real-sizes table */
 .rs-chips{margin-bottom:4px;}
 .rs-table td:first-child,.rs-table th:first-child{text-align:left;}
@@ -237,8 +263,19 @@ input[inputmode]{font-variant-numeric:tabular-nums;}
 .asm{margin:4px 0 0;padding-left:22px;}
 .asm li{font-size:13px;color:var(--ink-2);line-height:1.5;margin-bottom:7px;}
 .asm li::marker{color:var(--amber-dk);font-weight:700;}
+.checkcols{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:4px;}
+@media (max-width:520px){.checkcols{grid-template-columns:1fr;gap:10px;}}
+.ck-h{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--steel);margin:0 0 6px;}
+.ck-item{display:flex;align-items:flex-start;gap:9px;font-size:13px;color:var(--ink-2);padding:5px 0;line-height:1.4;}
+.ck-box{flex:0 0 16px;width:16px;height:16px;margin-top:1px;border:1.5px solid var(--steel);border-radius:4px;}
 .totals{font-size:12.5px;color:var(--muted);margin-top:14px;border-top:1px solid var(--line);padding-top:12px;line-height:1.7;}
 .totals b{color:var(--ink-2);}
+.extras{margin-top:14px;border-top:1px solid var(--line);padding-top:14px;}
+.extras h3{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 8px;}
+.extras .exhint{font-size:10px;font-weight:700;color:var(--amber-dk);background:var(--track);padding:2px 6px;border-radius:5px;margin-left:6px;letter-spacing:.04em;text-transform:none;vertical-align:1px;}
+.exrow{display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;padding:5px 0;border-bottom:1px dotted var(--line);font-variant-numeric:tabular-nums;}
+.exrow b{color:var(--ink);font-weight:700;}
+.exnote{font-size:11.5px;color:var(--muted);line-height:1.45;margin-top:8px;}
 .warn{background:#fcefe9;border:1px solid #e6b9a8;color:var(--cut);border-radius:12px;
   padding:14px;font-size:13.5px;font-weight:600;}
 html[data-theme="dark"] .warn{background:#2c1d18;border-color:#5a342a;color:#e8917a;}
@@ -313,9 +350,8 @@ footer{text-align:center;font-size:11px;color:var(--muted);margin-top:26px;lette
   #frac.active,#ref.active,#settings.active{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;}
   #frac .fcsub,#ref .reftip{grid-column:1 / -1;}
   .plan-grid{grid-template-columns:repeat(4,1fr);}
-  #glossList{column-count:2;column-gap:34px;}
-  #glossList .gcat,#glossList .gitem{break-inside:avoid;}
-  #glossList .gcat:first-child{margin-top:0;}
+  #glossList{column-count:2;column-gap:20px;}
+  #glossList .gloss-cat{break-inside:avoid;}
   #prices .card{max-width:680px;margin-left:auto;margin-right:auto;}
 }
 /* ---- printable spec sheet ---- */

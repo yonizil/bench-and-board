@@ -11,7 +11,36 @@
   var rowEl = document.getElementById('authRow');
   var outEl = document.getElementById('authSignedout');
   var inEl = document.getElementById('authSignedin');
-  var emailEl = document.getElementById('authEmail');
+  var nameEl = document.getElementById('authName');
+  var quoteEl = document.getElementById('authQuote');
+
+  // short, rotating maker's encouragement shown when signed in
+  var QUOTES = [
+    'Measure twice, build once.',
+    'Every board has a project in it.',
+    'Sawdust is the smell of progress.',
+    'Great things start with a single cut.',
+    'Make it with your own two hands.',
+    'Plan it, cut it, build it.',
+    'Turn lumber into something lasting.',
+    'The best time to start building is now.',
+    'Create more than you consume.',
+    'Your next favorite thing is still unbuilt.',
+    'Build it solid, build it yours.',
+    'Scrap today, treasure tomorrow.'
+  ];
+  var quoteTimer = null;
+  function startQuotes(){
+    if(!quoteEl) return;
+    function pick(){ quoteEl.textContent = QUOTES[Math.floor(Math.random()*QUOTES.length)]; }
+    pick();
+    clearInterval(quoteTimer);
+    quoteTimer = setInterval(function(){
+      quoteEl.style.opacity = '0';
+      setTimeout(function(){ pick(); quoteEl.style.opacity = '1'; }, 260);
+    }, 9000);
+  }
+  function stopQuotes(){ clearInterval(quoteTimer); quoteTimer = null; }
 
   function decodeJwt(t){
     try{
@@ -73,14 +102,17 @@
   function setSignedIn(t){
     token = t;
     var claims = decodeJwt(t);
-    if(emailEl) emailEl.textContent = claims.email || 'your account';
+    var who = claims.given_name || claims.name || (claims.email ? claims.email.split('@')[0] : 'maker');
+    if(nameEl) nameEl.textContent = who;
     if(outEl) outEl.style.display = 'none';
     if(inEl) inEl.style.display = '';
+    startQuotes();
     pull();
   }
 
   function setSignedOut(){
     token = null;
+    stopQuotes();
     if(inEl) inEl.style.display = 'none';
     if(outEl) outEl.style.display = '';
   }
