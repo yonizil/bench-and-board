@@ -124,7 +124,7 @@ function applyUnits(){
   var metric=unitsMetric();
   var lbl=document.getElementById('pLenLabel');if(lbl)lbl.textContent=metric?'Length (cm)':'Length (in)';
   var pl=document.getElementById('pLen');if(pl)pl.placeholder=metric?'72':'28.5';
-  if(typeof renderList==='function')renderList();
+  if(typeof renderList==='function'&&Array.isArray(pieces))renderList();
 }
 if(unitSel){
   try{var uu=localStorage.getItem('benchboard_units');if(uu)unitSel.value=uu;}catch(e){}
